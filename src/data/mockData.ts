@@ -70,7 +70,7 @@ export const customers: Customer[] = [
       price: '₹599/month',
       data: '2GB/day',
       validity: '28 days',
-      features: ['Unlimited Calls', '100 SMS/day', 'Free OTT: JioCinema + Hotstar'],
+      features: ['Unlimited Calls', '100 SMS/day', 'Free OTT: Cinema + Hotstar'],
     },
   },
   {
@@ -238,7 +238,7 @@ export const tickets: Ticket[] = [
     id: 'TKT-2024-006',
     customerId: 'CUST001',
     subject: 'OTT subscription not working',
-    description: 'My plan includes free JioCinema but it says "subscription expired" when I try to login.',
+    description: 'My plan includes free OTT subscription but it says "subscription expired" when I try to login.',
     status: 'closed',
     category: 'Value Added Services',
     createdAt: '2024-03-01T12:00:00',
@@ -247,7 +247,7 @@ export const tickets: Ticket[] = [
       {
         id: 'R005',
         from: 'merchant',
-        message: 'Hi Priya, your OTT subscription has been re-linked to your account. Please logout and login again on JioCinema.',
+        message: 'Hi Priya, your OTT subscription has been re-linked to your account. Please logout and login again on the OTT app.',
         timestamp: '2024-03-02T10:00:00',
       },
       {
