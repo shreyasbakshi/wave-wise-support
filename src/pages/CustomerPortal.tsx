@@ -155,8 +155,8 @@ export default function CustomerPortal() {
   }, [customerId, navigate]);
 
   const customer = customers.find((c) => c.id === customerId);
-  const myTickets = allTickets.filter((t) => t.customerId === customerId);
-  const myQueries = allQueries.filter((q) => q.customerId === customerId);
+  const myTickets: TicketType[] = [];
+  const myQueries: typeof allQueries = [];
 
   const handleLogout = () => {
     localStorage.removeItem('customerId');

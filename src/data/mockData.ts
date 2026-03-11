@@ -247,7 +247,7 @@ export const tickets: Ticket[] = [
       {
         id: 'R005',
         from: 'merchant',
-        message: 'Hi Priya, your OTT subscription has been re-linked to your account. Please logout and login again on JioCinema.',
+        message: 'Hi Priya, your OTT subscription has been re-linked to your account. Please logout and login again on the OTT app.',
         timestamp: '2024-03-02T10:00:00',
       },
       {
