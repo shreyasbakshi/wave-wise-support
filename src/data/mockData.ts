@@ -238,7 +238,7 @@ export const tickets: Ticket[] = [
     id: 'TKT-2024-006',
     customerId: 'CUST001',
     subject: 'OTT subscription not working',
-    description: 'My plan includes free JioCinema but it says "subscription expired" when I try to login.',
+    description: 'My plan includes free OTT subscription but it says "subscription expired" when I try to login.',
     status: 'closed',
     category: 'Value Added Services',
     createdAt: '2024-03-01T12:00:00',
