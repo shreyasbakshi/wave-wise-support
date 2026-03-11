@@ -419,7 +419,7 @@ export default function MerchantPortal() {
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.2 }}
         >
-          {activeTab === 'dashboard' && <DashboardView tickets={allTickets} />}
+          {activeTab === 'dashboard' && <DashboardView tickets={emptyTickets} />}
 
           {activeTab === 'tickets' && !selectedTicket && (
             <div>
