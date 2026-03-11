@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Share+Tech+Mono&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=Outfit:wght@400;500;600;700;800&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -6,56 +6,56 @@
 
 @layer base {
   :root {
-    /* Retro-Tech Dark Theme - Electric Blue + Magenta */
-    --background: 220 25% 6%;
-    --foreground: 200 20% 90%;
+    /* Clean Light Theme — Singtel-inspired warm whites */
+    --background: 0 0% 98%;
+    --foreground: 220 20% 18%;
 
-    --card: 220 20% 10%;
-    --card-foreground: 200 20% 90%;
+    --card: 0 0% 100%;
+    --card-foreground: 220 20% 18%;
 
-    --popover: 220 22% 9%;
-    --popover-foreground: 200 20% 90%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 220 20% 18%;
 
-    --primary: 210 100% 55%;
-    --primary-foreground: 220 25% 6%;
+    --primary: 340 85% 55%;
+    --primary-foreground: 0 0% 100%;
 
-    --secondary: 320 100% 55%;
+    --secondary: 210 90% 52%;
     --secondary-foreground: 0 0% 100%;
 
-    --muted: 220 15% 15%;
-    --muted-foreground: 220 10% 55%;
+    --muted: 220 14% 95%;
+    --muted-foreground: 220 10% 46%;
 
-    --accent: 320 100% 55%;
+    --accent: 340 85% 55%;
     --accent-foreground: 0 0% 100%;
 
     --destructive: 0 84% 60%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive-foreground: 0 0% 100%;
 
-    --border: 210 40% 25%;
-    --input: 220 15% 15%;
-    --ring: 210 100% 55%;
+    --border: 220 13% 90%;
+    --input: 220 13% 90%;
+    --ring: 340 85% 55%;
 
-    --radius: 0.25rem;
+    --radius: 0.75rem;
 
-    /* Custom retro tokens */
-    --glow-blue: 210 100% 55%;
-    --glow-magenta: 320 100% 55%;
-    --surface-dark: 220 20% 8%;
-    --surface-mid: 220 18% 12%;
-    --surface-light: 220 15% 16%;
-    --neon-green: 150 100% 45%;
-    --retro-yellow: 50 100% 55%;
-    --retro-orange: 25 100% 55%;
-    --scanline-opacity: 0.03;
+    /* Custom tokens */
+    --glow-blue: 210 90% 52%;
+    --glow-magenta: 340 85% 55%;
+    --surface-dark: 220 14% 96%;
+    --surface-mid: 220 14% 93%;
+    --surface-light: 220 14% 97%;
+    --neon-green: 150 60% 42%;
+    --retro-yellow: 42 90% 52%;
+    --retro-orange: 20 90% 55%;
+    --scanline-opacity: 0;
 
-    --sidebar-background: 220 20% 8%;
-    --sidebar-foreground: 200 20% 90%;
-    --sidebar-primary: 210 100% 55%;
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 220 20% 18%;
+    --sidebar-primary: 340 85% 55%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 220 15% 15%;
-    --sidebar-accent-foreground: 200 20% 90%;
-    --sidebar-border: 210 40% 25%;
-    --sidebar-ring: 210 100% 55%;
+    --sidebar-accent: 220 14% 95%;
+    --sidebar-accent-foreground: 220 20% 18%;
+    --sidebar-border: 220 13% 90%;
+    --sidebar-ring: 340 85% 55%;
   }
 }
 
@@ -65,59 +65,35 @@
   }
   body {
     @apply bg-background text-foreground;
-    font-family: 'Space Mono', monospace;
+    font-family: 'DM Sans', sans-serif;
   }
   h1, h2, h3, h4, h5, h6 {
-    font-family: 'Share Tech Mono', monospace;
-    letter-spacing: 0.05em;
+    font-family: 'Outfit', sans-serif;
+    font-weight: 600;
+    letter-spacing: -0.01em;
   }
 }
 
-/* Retro scanline overlay */
-.scanlines {
-  position: relative;
-}
-.scanlines::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: repeating-linear-gradient(
-    0deg,
-    transparent,
-    transparent 2px,
-    hsl(var(--background) / var(--scanline-opacity)) 2px,
-    hsl(var(--background) / var(--scanline-opacity)) 4px
-  );
-  pointer-events: none;
-  z-index: 1;
-}
-
-/* Glow effects */
+/* Glow effects - softer for light theme */
 .glow-blue {
-  box-shadow: 0 0 10px hsl(var(--glow-blue) / 0.3),
-              0 0 30px hsl(var(--glow-blue) / 0.15),
-              inset 0 0 10px hsl(var(--glow-blue) / 0.05);
+  box-shadow: 0 2px 12px hsl(var(--glow-blue) / 0.12);
 }
 .glow-magenta {
-  box-shadow: 0 0 10px hsl(var(--glow-magenta) / 0.3),
-              0 0 30px hsl(var(--glow-magenta) / 0.15),
-              inset 0 0 10px hsl(var(--glow-magenta) / 0.05);
+  box-shadow: 0 2px 12px hsl(var(--glow-magenta) / 0.12);
 }
 .glow-text-blue {
-  text-shadow: 0 0 8px hsl(var(--glow-blue) / 0.6),
-               0 0 20px hsl(var(--glow-blue) / 0.3);
+  color: hsl(var(--glow-blue));
 }
 .glow-text-magenta {
-  text-shadow: 0 0 8px hsl(var(--glow-magenta) / 0.6),
-               0 0 20px hsl(var(--glow-magenta) / 0.3);
+  color: hsl(var(--glow-magenta));
 }
 
 /* Grid pattern background */
 .retro-grid {
   background-image:
-    linear-gradient(hsl(var(--border) / 0.3) 1px, transparent 1px),
-    linear-gradient(90deg, hsl(var(--border) / 0.3) 1px, transparent 1px);
-  background-size: 40px 40px;
+    linear-gradient(hsl(var(--border) / 0.4) 1px, transparent 1px),
+    linear-gradient(90deg, hsl(var(--border) / 0.4) 1px, transparent 1px);
+  background-size: 50px 50px;
 }
 
 /* Signal wave animation */
@@ -136,19 +112,10 @@
 /* Pulse animation */
 @keyframes retro-pulse {
   0%, 100% { opacity: 1; }
-  50% { opacity: 0.5; }
+  50% { opacity: 0.6; }
 }
 .retro-pulse {
   animation: retro-pulse 2s ease-in-out infinite;
-}
-
-/* CRT flicker */
-@keyframes crt-flicker {
-  0% { opacity: 0.97; }
-  5% { opacity: 1; }
-  10% { opacity: 0.98; }
-  15% { opacity: 1; }
-  100% { opacity: 1; }
 }
 
 /* Typing cursor */
@@ -157,25 +124,9 @@
   50% { opacity: 0; }
 }
 .cursor-blink::after {
-  content: '█';
+  content: '|';
   animation: blink-cursor 1s step-end infinite;
   color: hsl(var(--primary));
-}
-
-/* Chunky retro border style */
-.retro-border {
-  border: 2px solid hsl(var(--border));
-  box-shadow: 4px 4px 0 hsl(var(--border) / 0.5);
-}
-
-/* Pixel corner decoration */
-.pixel-corners {
-  clip-path: polygon(
-    0 8px, 8px 8px, 8px 0,
-    calc(100% - 8px) 0, calc(100% - 8px) 8px, 100% 8px,
-    100% calc(100% - 8px), calc(100% - 8px) calc(100% - 8px), calc(100% - 8px) 100%,
-    8px 100%, 8px calc(100% - 8px), 0 calc(100% - 8px)
-  );
 }
 
 /* Status indicators */
@@ -186,15 +137,29 @@
 
 /* Scrollbar styling */
 ::-webkit-scrollbar {
-  width: 8px;
+  width: 6px;
 }
 ::-webkit-scrollbar-track {
-  background: hsl(var(--surface-dark));
+  background: hsl(var(--muted));
 }
 ::-webkit-scrollbar-thumb {
   background: hsl(var(--border));
-  border-radius: 0;
+  border-radius: 3px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: hsl(var(--primary) / 0.5);
+  background: hsl(var(--muted-foreground) / 0.3);
 }
+
+/* Soft card hover */
+.card-hover {
+  transition: all 0.2s ease;
+}
+.card-hover:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 30px hsl(var(--foreground) / 0.08);
+}
+
+/* Scanlines - keep class for compat but invisible */
+.scanlines::after { display: none; }
+.retro-border { border: 1px solid hsl(var(--border)); border-radius: var(--radius); }
+.pixel-corners { border-radius: var(--radius); }

@@ -6,11 +6,10 @@ import { motion, AnimatePresence } from 'framer-motion';
 const SignalWaveLogo = () => (
   <Link to="/" className="flex items-center gap-2 group">
     <div className="relative">
-      <Signal className="w-7 h-7 text-primary group-hover:text-secondary transition-colors" />
-      <div className="absolute -inset-1 bg-primary/20 rounded-full blur-md group-hover:bg-secondary/20 transition-colors" />
+      <Signal className="w-6 h-6 text-primary group-hover:text-secondary transition-colors" />
     </div>
-    <span className="font-display text-lg tracking-wider text-foreground">
-      SIGNAL<span className="text-primary">WAVE</span>
+    <span className="text-lg font-semibold tracking-tight text-foreground">
+      Signal<span className="text-primary">Wave</span>
     </span>
   </Link>
 );
@@ -20,7 +19,7 @@ const SignalBars = () => (
     {[3, 5, 8, 11, 15].map((h, i) => (
       <div
         key={i}
-        className="w-[3px] bg-primary signal-bar rounded-sm"
+        className="w-[3px] bg-primary/60 signal-bar rounded-full"
         style={{ height: `${h}px` }}
       />
     ))}
@@ -58,9 +57,9 @@ export default function Header({ variant = 'public', customerName, onLogout }: H
       ];
 
   return (
-    <header className="sticky top-0 z-50 border-b border-border bg-surface-dark/90 backdrop-blur-md">
-      <div className="container mx-auto px-4 h-14 flex items-center justify-between">
-        <div className="flex items-center gap-4">
+    <header className="sticky top-0 z-50 border-b border-border bg-card/80 backdrop-blur-md">
+      <div className="container mx-auto px-4 h-16 flex items-center justify-between">
+        <div className="flex items-center gap-3">
           <SignalWaveLogo />
           <SignalBars />
         </div>
@@ -71,25 +70,25 @@ export default function Header({ variant = 'public', customerName, onLogout }: H
             <Link
               key={link.path}
               to={link.path}
-              className={`px-3 py-1.5 text-sm font-mono transition-all ${
+              className={`px-4 py-2 text-sm rounded-lg transition-all ${
                 isActive(link.path)
-                  ? 'text-primary glow-text-blue'
-                  : 'text-muted-foreground hover:text-foreground'
+                  ? 'text-primary bg-primary/5 font-medium'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-muted'
               }`}
             >
-              [{link.label}]
+              {link.label}
             </Link>
           ))}
           {(variant === 'customer' || variant === 'merchant') && (
             <div className="flex items-center gap-3 ml-4 pl-4 border-l border-border">
               {customerName && (
-                <span className="text-xs text-muted-foreground">{customerName}</span>
+                <span className="text-sm text-muted-foreground">{customerName}</span>
               )}
               <button
                 onClick={onLogout}
-                className="px-3 py-1 text-xs border border-destructive text-destructive hover:bg-destructive hover:text-destructive-foreground transition-colors"
+                className="px-4 py-1.5 text-sm rounded-lg border border-destructive/30 text-destructive hover:bg-destructive hover:text-destructive-foreground transition-colors"
               >
-                LOGOUT
+                Logout
               </button>
             </div>
           )}
@@ -111,29 +110,29 @@ export default function Header({ variant = 'public', customerName, onLogout }: H
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: 'auto', opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
-            className="md:hidden border-t border-border bg-surface-dark overflow-hidden"
+            className="md:hidden border-t border-border bg-card overflow-hidden"
           >
-            <div className="container mx-auto px-4 py-3 flex flex-col gap-2">
+            <div className="container mx-auto px-4 py-3 flex flex-col gap-1">
               {navLinks.map((link) => (
                 <Link
                   key={link.path}
                   to={link.path}
                   onClick={() => setMobileOpen(false)}
-                  className={`px-3 py-2 text-sm font-mono ${
+                  className={`px-4 py-2.5 text-sm rounded-lg ${
                     isActive(link.path)
-                      ? 'text-primary glow-text-blue'
+                      ? 'text-primary bg-primary/5 font-medium'
                       : 'text-muted-foreground'
                   }`}
                 >
-                  {'>'} {link.label}
+                  {link.label}
                 </Link>
               ))}
               {onLogout && (
                 <button
                   onClick={onLogout}
-                  className="px-3 py-2 text-sm text-destructive text-left font-mono"
+                  className="px-4 py-2.5 text-sm text-destructive text-left rounded-lg"
                 >
-                  {'>'} LOGOUT
+                  Logout
                 </button>
               )}
             </div>
