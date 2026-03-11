@@ -70,7 +70,7 @@ export const customers: Customer[] = [
       price: '₹599/month',
       data: '2GB/day',
       validity: '28 days',
-      features: ['Unlimited Calls', '100 SMS/day', 'Free OTT: JioCinema + Hotstar'],
+      features: ['Unlimited Calls', '100 SMS/day', 'Free OTT: Cinema + Hotstar'],
     },
   },
   {
