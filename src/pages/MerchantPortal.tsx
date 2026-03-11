@@ -378,9 +378,8 @@ export default function MerchantPortal() {
     navigate('/merchant/login');
   };
 
-  const filteredTickets = filterCategory === 'all'
-    ? allTickets
-    : allTickets.filter((t) => t.category === filterCategory);
+  const emptyTickets: TicketType[] = [];
+  const filteredTickets = emptyTickets;
 
   const tabs: { key: Tab; label: string; path: string; icon: React.ElementType }[] = [
     { key: 'dashboard', label: 'Dashboard', path: '/merchant/dashboard', icon: LayoutDashboard },
