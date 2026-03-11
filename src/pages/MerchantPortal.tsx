@@ -378,9 +378,8 @@ export default function MerchantPortal() {
     navigate('/merchant/login');
   };
 
-  const filteredTickets = filterCategory === 'all'
-    ? allTickets
-    : allTickets.filter((t) => t.category === filterCategory);
+  const emptyTickets: TicketType[] = [];
+  const filteredTickets = emptyTickets;
 
   const tabs: { key: Tab; label: string; path: string; icon: React.ElementType }[] = [
     { key: 'dashboard', label: 'Dashboard', path: '/merchant/dashboard', icon: LayoutDashboard },
@@ -420,7 +419,7 @@ export default function MerchantPortal() {
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.2 }}
         >
-          {activeTab === 'dashboard' && <DashboardView tickets={allTickets} />}
+          {activeTab === 'dashboard' && <DashboardView tickets={emptyTickets} />}
 
           {activeTab === 'tickets' && !selectedTicket && (
             <div>
