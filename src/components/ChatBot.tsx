@@ -1,8 +1,12 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, forwardRef, useImperativeHandle } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MessageCircle, X, Send, Bot, User, LogIn } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+
+export interface ChatBotRef {
+  openWithMessage: (message: string) => void;
+}
 
 interface Message {
   id: string;
@@ -35,7 +39,7 @@ function getResponse(query: string): { text: string; needsTicket: boolean } {
   return { text: botResponses['default'], needsTicket: true };
 }
 
-export default function ChatBot() {
+const ChatBot = forwardRef<ChatBotRef>((_props, ref) => {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([
     { id: '0', role: 'assistant', content: 'Namaste! 🙏 Welcome to SignalWave support. How can I help you today?' },
@@ -50,21 +54,18 @@ export default function ChatBot() {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isTyping]);
 
-  const handleSend = () => {
-    if (!input.trim()) return;
-    const userMsg: Message = { id: Date.now().toString(), role: 'user', content: input };
+  const processMessage = (text: string) => {
+    const userMsg: Message = { id: Date.now().toString(), role: 'user', content: text };
     setMessages((prev) => [...prev, userMsg]);
-    const currentInput = input;
-    setInput('');
     setIsTyping(true);
 
     setTimeout(() => {
-      const { text, needsTicket } = getResponse(currentInput);
+      const { text: responseText, needsTicket } = getResponse(text);
       const showLoginPrompt = needsTicket && !user;
 
       const responseContent = showLoginPrompt
-        ? `${text}\n\nTo create a support ticket, please log in to your account first.`
-        : text;
+        ? `${responseText}\n\nTo create a support ticket, please log in to your account first.`
+        : responseText;
 
       setMessages((prev) => [
         ...prev,
@@ -72,6 +73,21 @@ export default function ChatBot() {
       ]);
       setIsTyping(false);
     }, 1200);
+  };
+
+  useImperativeHandle(ref, () => ({
+    openWithMessage: (message: string) => {
+      setIsOpen(true);
+      // Small delay to let the chat window render
+      setTimeout(() => processMessage(message), 100);
+    },
+  }));
+
+  const handleSend = () => {
+    if (!input.trim()) return;
+    const currentInput = input;
+    setInput('');
+    processMessage(currentInput);
   };
 
   const handleLoginRedirect = () => {
@@ -182,4 +198,8 @@ export default function ChatBot() {
       </AnimatePresence>
     </>
   );
-}
+});
+
+ChatBot.displayName = 'ChatBot';
+
+export default ChatBot;

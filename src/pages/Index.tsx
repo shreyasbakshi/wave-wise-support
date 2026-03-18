@@ -1,9 +1,8 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useRef } from 'react';
 import { motion } from 'framer-motion';
-import { Search, Signal } from 'lucide-react';
+import { Search } from 'lucide-react';
 import Header from '@/components/Header';
-import ChatBot from '@/components/ChatBot';
+import ChatBot, { ChatBotRef } from '@/components/ChatBot';
 
 const quickLinks = [
   'Check data balance',
@@ -16,12 +15,13 @@ const quickLinks = [
 
 export default function Index() {
   const [searchQuery, setSearchQuery] = useState('');
-  const navigate = useNavigate();
+  const chatBotRef = useRef<ChatBotRef>(null);
 
   const handleSearch = (query?: string) => {
-    const q = query || searchQuery;
-    if (!q.trim()) return;
-    navigate(`/customer/login?query=${encodeURIComponent(q)}`);
+    const q = (query || searchQuery).trim();
+    if (!q) return;
+    chatBotRef.current?.openWithMessage(q);
+    setSearchQuery('');
   };
 
   return (
@@ -30,7 +30,6 @@ export default function Index() {
 
       {/* Hero Section */}
       <section className="relative overflow-hidden">
-        {/* Subtle gradient background */}
         <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-background to-secondary/5" />
         <div className="absolute inset-0 retro-grid opacity-30" />
 
@@ -41,7 +40,6 @@ export default function Index() {
             transition={{ duration: 0.5 }}
             className="max-w-2xl mx-auto text-center"
           >
-            {/* Status pill */}
             <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-border bg-card mb-8 text-xs text-muted-foreground shadow-sm">
               <span className="w-2 h-2 rounded-full bg-neon-green animate-pulse" />
               All networks operational
@@ -95,7 +93,7 @@ export default function Index() {
         </div>
       </section>
 
-      <ChatBot />
+      <ChatBot ref={chatBotRef} />
     </div>
   );
 }
