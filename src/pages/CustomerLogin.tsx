@@ -1,24 +1,44 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { User, Lock, Signal, ArrowRight } from 'lucide-react';
+import { User, Lock, Signal, ArrowRight, Loader2 } from 'lucide-react';
 import Header from '@/components/Header';
-import { customers } from '@/data/mockData';
+import { useAuth } from '@/contexts/AuthContext';
 
 export default function CustomerLogin() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [mode, setMode] = useState<'login' | 'signup'>('login');
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const { signIn, signUp } = useAuth();
 
-  const handleLogin = () => {
-    const customer = customers.find((c) => c.email === email && c.password === password);
-    if (customer) {
-      localStorage.setItem('customerId', customer.id);
-      localStorage.setItem('customerName', customer.name);
-      navigate('/customer/tickets');
+  const redirectTo = searchParams.get('redirect') || '/customer/tickets';
+
+  const handleSubmit = async () => {
+    if (!email || !password) {
+      setError('Please enter both email and password.');
+      return;
+    }
+    setIsLoading(true);
+    setError('');
+
+    const { error: authError } = mode === 'login'
+      ? await signIn(email, password)
+      : await signUp(email, password);
+
+    setIsLoading(false);
+
+    if (authError) {
+      setError(authError.message);
+    } else if (mode === 'signup') {
+      setError('');
+      setMode('login');
+      alert('Account created! You can now log in.');
     } else {
-      setError('Invalid credentials. Try one of the demo accounts below.');
+      navigate(redirectTo);
     }
   };
 
@@ -44,7 +64,9 @@ export default function CustomerLogin() {
 
             <div className="flex items-center gap-2 mb-6">
               <Signal className="w-6 h-6 text-primary" />
-              <h1 className="font-display text-xl text-foreground">CUSTOMER <span className="text-primary">LOGIN</span></h1>
+              <h1 className="font-display text-xl text-foreground">
+                CUSTOMER <span className="text-primary">{mode === 'login' ? 'LOGIN' : 'SIGN UP'}</span>
+              </h1>
             </div>
 
             <div className="space-y-4">
@@ -70,7 +92,7 @@ export default function CustomerLogin() {
                     type="password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    onKeyDown={(e) => e.key === 'Enter' && handleLogin()}
+                    onKeyDown={(e) => e.key === 'Enter' && handleSubmit()}
                     placeholder="Enter password"
                     className="flex-1 bg-transparent py-2.5 pr-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none font-mono"
                   />
@@ -84,43 +106,25 @@ export default function CustomerLogin() {
               )}
 
               <button
-                onClick={handleLogin}
-                className="w-full py-2.5 bg-primary text-primary-foreground font-display text-sm tracking-wider hover:bg-primary/80 transition-colors flex items-center justify-center gap-2"
+                onClick={handleSubmit}
+                disabled={isLoading}
+                className="w-full py-2.5 bg-primary text-primary-foreground font-display text-sm tracking-wider hover:bg-primary/80 transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
               >
-                LOGIN <ArrowRight className="w-4 h-4" />
+                {isLoading ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <>
+                    {mode === 'login' ? 'LOGIN' : 'SIGN UP'} <ArrowRight className="w-4 h-4" />
+                  </>
+                )}
               </button>
-            </div>
-          </motion.div>
 
-          {/* Demo accounts */}
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.3 }}
-            className="mt-6 border border-border bg-surface-dark p-4"
-          >
-            <p className="text-[10px] font-mono text-primary mb-3">{'>'} DEMO ACCOUNTS:</p>
-            <div className="space-y-2">
-              {customers.map((c) => (
-                <button
-                  key={c.id}
-                  onClick={() => {
-                    setEmail(c.email);
-                    setPassword(c.password);
-                    setError('');
-                  }}
-                  className="w-full flex items-center justify-between px-3 py-2 border border-border hover:border-primary/50 hover:bg-surface-mid transition-all text-left group"
-                >
-                  <div className="flex items-center gap-2">
-                    <span className="text-lg">{c.avatar}</span>
-                    <div>
-                      <span className="text-xs font-mono text-foreground">{c.name}</span>
-                      <span className="text-[10px] text-muted-foreground block">{c.plan.name}</span>
-                    </div>
-                  </div>
-                  <ArrowRight className="w-3 h-3 text-muted-foreground group-hover:text-primary transition-colors" />
-                </button>
-              ))}
+              <button
+                onClick={() => { setMode(mode === 'login' ? 'signup' : 'login'); setError(''); }}
+                className="w-full text-xs font-mono text-muted-foreground hover:text-primary transition-colors py-2"
+              >
+                {mode === 'login' ? "Don't have an account? Sign up" : 'Already have an account? Log in'}
+              </button>
             </div>
           </motion.div>
         </div>
