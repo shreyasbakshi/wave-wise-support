@@ -1,13 +1,14 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Ticket, MessageSquare, ThumbsUp, ThumbsDown, Send, Wifi, Phone, CreditCard, Zap, Clock } from 'lucide-react';
+import { Ticket, MessageSquare, ThumbsUp, ThumbsDown, Send, CreditCard, Clock } from 'lucide-react';
 import Header from '@/components/Header';
 import TicketCard from '@/components/TicketCard';
 import ChatBot from '@/components/ChatBot';
-import { customers, tickets as allTickets, queries as allQueries, type Ticket as TicketType } from '@/data/mockData';
+import { tickets as allTickets, queries as allQueries, type Ticket as TicketType } from '@/data/mockData';
+import { useAuth } from '@/contexts/AuthContext';
 
-type Tab = 'tickets' | 'queries' | 'plan';
+type Tab = 'tickets' | 'queries';
 
 function TicketDetailView({ ticket, onBack }: { ticket: TicketType; onBack: () => void }) {
   const [replyText, setReplyText] = useState('');
@@ -143,57 +144,47 @@ export default function CustomerPortal() {
   const navigate = useNavigate();
   const location = useLocation();
   const [selectedTicket, setSelectedTicket] = useState<TicketType | null>(null);
+  const { user, loading, signOut } = useAuth();
 
   const path = location.pathname;
-  const activeTab: Tab = path.includes('/queries') ? 'queries' : path.includes('/plan') ? 'plan' : 'tickets';
+  const activeTab: Tab = path.includes('/queries') ? 'queries' : 'tickets';
 
-  const customerId = localStorage.getItem('customerId');
-  const customerName = localStorage.getItem('customerName');
+  // Redirect to login if not authenticated
+  if (!loading && !user) {
+    navigate('/customer/login');
+    return null;
+  }
 
-  useEffect(() => {
-    if (!customerId) navigate('/customer/login');
-  }, [customerId, navigate]);
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <p className="text-muted-foreground font-mono text-sm">Loading...</p>
+      </div>
+    );
+  }
 
-  const customer = customers.find((c) => c.id === customerId);
+  const customerEmail = user?.email || '';
   const myTickets: TicketType[] = [];
   const myQueries: typeof allQueries = [];
 
-  const handleLogout = () => {
-    localStorage.removeItem('customerId');
-    localStorage.removeItem('customerName');
+  const handleLogout = async () => {
+    await signOut();
     navigate('/customer/login');
   };
 
   const tabs: { key: Tab; label: string; path: string; icon: React.ElementType }[] = [
     { key: 'tickets', label: 'My Tickets', path: '/customer/tickets', icon: Ticket },
     { key: 'queries', label: 'My Queries', path: '/customer/queries', icon: MessageSquare },
-    { key: 'plan', label: 'Service Plan', path: '/customer/plan', icon: CreditCard },
   ];
-
-  const planIcons: Record<string, React.ElementType> = {
-    prepaid: Phone,
-    postpaid: Phone,
-    fiber: Wifi,
-    business: Zap,
-    family: Wifi,
-  };
-
-  if (!customer) return null;
-
-  const PlanIcon = planIcons[customer.plan.type] || Wifi;
 
   return (
     <div className="min-h-screen bg-background">
-      <Header variant="customer" customerName={customerName || ''} onLogout={handleLogout} />
+      <Header variant="customer" customerName={customerEmail} onLogout={handleLogout} />
 
       <div className="container mx-auto px-4 py-6">
         {/* Welcome */}
-        <div className="mb-6 flex items-center gap-3">
-          <span className="text-3xl">{customer.avatar}</span>
-          <div>
-            <h1 className="font-display text-lg text-foreground">Welcome, <span className="text-primary">{customer.name}</span></h1>
-            <p className="text-[10px] font-mono text-muted-foreground">{customer.plan.name} | {customer.phone}</p>
-          </div>
+        <div className="mb-6">
+          <h1 className="font-display text-lg text-foreground">Welcome, <span className="text-primary">{customerEmail}</span></h1>
         </div>
 
         {/* Tabs */}
@@ -284,56 +275,6 @@ export default function CustomerPortal() {
                   ))}
                 </div>
               )}
-            </div>
-          )}
-
-          {activeTab === 'plan' && (
-            <div>
-              <div className="border-2 border-primary/30 bg-card p-6 glow-blue">
-                <div className="flex items-start gap-4">
-                  <div className="p-3 border border-primary/30 bg-primary/10">
-                    <PlanIcon className="w-8 h-8 text-primary" />
-                  </div>
-                  <div className="flex-1">
-                    <h2 className="font-display text-xl text-foreground mb-1">{customer.plan.name}</h2>
-                    <p className="text-sm text-primary font-mono">{customer.plan.price}</p>
-                    <div className="mt-3 grid grid-cols-2 gap-3">
-                      <div className="border border-border bg-surface-dark p-3">
-                        <p className="text-[10px] text-muted-foreground font-mono">DATA</p>
-                        <p className="text-sm text-foreground font-display">{customer.plan.data}</p>
-                      </div>
-                      <div className="border border-border bg-surface-dark p-3">
-                        <p className="text-[10px] text-muted-foreground font-mono">VALIDITY</p>
-                        <p className="text-sm text-foreground font-display">{customer.plan.validity}</p>
-                      </div>
-                    </div>
-                    <div className="mt-4">
-                      <p className="text-[10px] text-muted-foreground font-mono mb-2">FEATURES</p>
-                      <div className="flex flex-wrap gap-2">
-                        {customer.plan.features.map((feat) => (
-                          <span key={feat} className="text-[11px] px-2 py-1 border border-border bg-surface-light text-foreground font-mono">
-                            ✓ {feat}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="mt-6 border border-border bg-card p-4">
-                <p className="text-[10px] font-mono text-secondary mb-2">{'>'} UPGRADE OPTIONS</p>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  <div className="border border-border p-3 hover:border-secondary/50 cursor-pointer transition-all">
-                    <p className="text-xs font-display text-foreground">SPEED BOOST ADD-ON</p>
-                    <p className="text-[10px] text-muted-foreground">+50Mbps for ₹199/month</p>
-                  </div>
-                  <div className="border border-border p-3 hover:border-secondary/50 cursor-pointer transition-all">
-                    <p className="text-xs font-display text-foreground">OTT SUPER PACK</p>
-                    <p className="text-[10px] text-muted-foreground">All OTT apps for ₹299/month</p>
-                  </div>
-                </div>
-              </div>
             </div>
           )}
         </motion.div>

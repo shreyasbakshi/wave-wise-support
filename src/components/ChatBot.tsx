@@ -1,29 +1,38 @@
 import { useState, useRef, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { MessageCircle, X, Send, Bot, User } from 'lucide-react';
+import { MessageCircle, X, Send, Bot, User, LogIn } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface Message {
   id: string;
   role: 'user' | 'assistant';
   content: string;
+  showLoginPrompt?: boolean;
 }
 
 const botResponses: Record<string, string> = {
   'data': 'To check your data balance, dial *121# or open the SignalWave app → My Usage. You can also SMS "BAL" to 121.',
   'recharge': 'You can recharge through: 1) SignalWave App 2) Website signalwave.in/recharge 3) Paytm/PhonePe 4) Nearest retail store',
-  'speed': 'If you\'re experiencing slow speeds: 1) Restart your device 2) Check signal strength 3) Try toggling airplane mode. If issue persists, we\'ll create a support ticket for you.',
+  'speed': 'If you\'re experiencing slow speeds: 1) Restart your device 2) Check signal strength 3) Try toggling airplane mode. If the issue persists, I can create a support ticket for you.',
   'bill': 'View your bill: App → My Account → Bills. Download PDF or get it emailed. For billing disputes, I can create a ticket for you.',
   'plan': 'To view or change your plan, go to App → My Plan → Explore Plans. You can also visit signalwave.in/plans for all current offers.',
   'roaming': 'International roaming can be activated by dialing *123*1# or through the app. We recommend our travel packs starting at ₹499 for 7 days.',
-  'default': 'I understand your query. Let me connect you with our AI assistant for a detailed response. Meanwhile, you can also check our FAQ at signalwave.in/help. Would you like me to create a support ticket?',
+  'default': 'I understand your query. Let me help you further. Would you like me to create a support ticket for this?',
 };
 
-function getResponse(query: string): string {
+const ticketKeywords = ['ticket', 'create', 'support', 'complaint', 'issue', 'problem', 'escalate', 'help me', 'not working', 'broken'];
+
+function getResponse(query: string): { text: string; needsTicket: boolean } {
   const q = query.toLowerCase();
+  const needsTicket = ticketKeywords.some(kw => q.includes(kw));
+
   for (const [key, response] of Object.entries(botResponses)) {
-    if (key !== 'default' && q.includes(key)) return response;
+    if (key !== 'default' && q.includes(key)) {
+      return { text: response, needsTicket };
+    }
   }
-  return botResponses['default'];
+  return { text: botResponses['default'], needsTicket: true };
 }
 
 export default function ChatBot() {
@@ -34,6 +43,8 @@ export default function ChatBot() {
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const { user } = useAuth();
+  const navigate = useNavigate();
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -43,17 +54,28 @@ export default function ChatBot() {
     if (!input.trim()) return;
     const userMsg: Message = { id: Date.now().toString(), role: 'user', content: input };
     setMessages((prev) => [...prev, userMsg]);
+    const currentInput = input;
     setInput('');
     setIsTyping(true);
 
     setTimeout(() => {
-      const response = getResponse(input);
+      const { text, needsTicket } = getResponse(currentInput);
+      const showLoginPrompt = needsTicket && !user;
+
+      const responseContent = showLoginPrompt
+        ? `${text}\n\nTo create a support ticket, please log in to your account first.`
+        : text;
+
       setMessages((prev) => [
         ...prev,
-        { id: (Date.now() + 1).toString(), role: 'assistant', content: response },
+        { id: (Date.now() + 1).toString(), role: 'assistant', content: responseContent, showLoginPrompt },
       ]);
       setIsTyping(false);
     }, 1200);
+  };
+
+  const handleLoginRedirect = () => {
+    navigate('/customer/login?redirect=/customer/tickets');
   };
 
   return (
@@ -93,26 +115,35 @@ export default function ChatBot() {
             {/* Messages */}
             <div className="flex-1 overflow-y-auto p-3 space-y-3">
               {messages.map((msg) => (
-                <div
-                  key={msg.id}
-                  className={`flex gap-2 ${msg.role === 'user' ? 'flex-row-reverse' : ''}`}
-                >
-                  <div className={`w-6 h-6 rounded-sm flex items-center justify-center flex-shrink-0 ${
-                    msg.role === 'user' ? 'bg-secondary/20' : 'bg-primary/20'
-                  }`}>
-                    {msg.role === 'user' ? (
-                      <User className="w-3.5 h-3.5 text-secondary" />
-                    ) : (
-                      <Bot className="w-3.5 h-3.5 text-primary" />
-                    )}
+                <div key={msg.id}>
+                  <div className={`flex gap-2 ${msg.role === 'user' ? 'flex-row-reverse' : ''}`}>
+                    <div className={`w-6 h-6 rounded-sm flex items-center justify-center flex-shrink-0 ${
+                      msg.role === 'user' ? 'bg-secondary/20' : 'bg-primary/20'
+                    }`}>
+                      {msg.role === 'user' ? (
+                        <User className="w-3.5 h-3.5 text-secondary" />
+                      ) : (
+                        <Bot className="w-3.5 h-3.5 text-primary" />
+                      )}
+                    </div>
+                    <div className={`max-w-[80%] px-3 py-2 text-xs leading-relaxed ${
+                      msg.role === 'user'
+                        ? 'bg-secondary/10 border border-secondary/30 text-foreground'
+                        : 'bg-primary/10 border border-primary/30 text-foreground'
+                    }`}>
+                      {msg.content}
+                    </div>
                   </div>
-                  <div className={`max-w-[80%] px-3 py-2 text-xs leading-relaxed ${
-                    msg.role === 'user'
-                      ? 'bg-secondary/10 border border-secondary/30 text-foreground'
-                      : 'bg-primary/10 border border-primary/30 text-foreground'
-                  }`}>
-                    {msg.content}
-                  </div>
+                  {msg.showLoginPrompt && (
+                    <div className="ml-8 mt-2">
+                      <button
+                        onClick={handleLoginRedirect}
+                        className="flex items-center gap-1.5 px-3 py-1.5 bg-primary text-primary-foreground text-xs font-mono hover:bg-primary/80 transition-colors rounded-sm"
+                      >
+                        <LogIn className="w-3 h-3" /> Log in to create ticket
+                      </button>
+                    </div>
+                  )}
                 </div>
               ))}
               {isTyping && (
