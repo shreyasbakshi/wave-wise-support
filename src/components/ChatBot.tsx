@@ -208,11 +208,16 @@ const ChatBot = forwardRef<ChatBotRef>((_props, ref) => {
                     </div>
                   )}
                   {msg.showFeedback && (
-                    <div className="ml-8 mt-2 flex items-center gap-2">
-                      {msg.feedbackGiven ? (
+                    <div className="ml-8 mt-2">
+                      {msg.feedbackGiven && !msg.feedbackTextOpen ? (
                         <span className="text-[10px] text-muted-foreground">Thanks for your feedback!</span>
+                      ) : msg.feedbackTextOpen ? (
+                        <FeedbackTextInput
+                          onSubmit={(text) => handleFeedbackSubmit(msg.id, text)}
+                          onSkip={() => handleFeedbackSubmit(msg.id, '')}
+                        />
                       ) : (
-                        <>
+                        <div className="flex items-center gap-2">
                           <span className="text-[10px] text-muted-foreground">Was this helpful?</span>
                           <button
                             onClick={() => handleFeedback(msg.id, 'up')}
@@ -226,7 +231,7 @@ const ChatBot = forwardRef<ChatBotRef>((_props, ref) => {
                           >
                             <ThumbsDown className="w-3 h-3 text-muted-foreground hover:text-destructive" />
                           </button>
-                        </>
+                        </div>
                       )}
                     </div>
                   )}
