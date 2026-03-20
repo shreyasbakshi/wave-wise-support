@@ -15,10 +15,41 @@ interface Message {
   showLoginPrompt?: boolean;
   showFeedback?: boolean;
   feedbackGiven?: 'up' | 'down' | null;
+  feedbackTextOpen?: boolean;
   escalated?: boolean;
 }
 
 const SESSION_ID = crypto.randomUUID();
+
+function FeedbackTextInput({ onSubmit, onSkip }: { onSubmit: (text: string) => void; onSkip: () => void }) {
+  const [text, setText] = useState('');
+  return (
+    <div className="space-y-1.5">
+      <p className="text-[10px] text-muted-foreground">What could be improved?</p>
+      <textarea
+        value={text}
+        onChange={(e) => setText(e.target.value)}
+        placeholder="Tell us more (optional)..."
+        className="w-full bg-surface-dark border border-border px-2 py-1.5 text-[11px] text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none resize-none"
+        rows={2}
+      />
+      <div className="flex gap-1.5">
+        <button
+          onClick={() => onSubmit(text)}
+          className="px-2 py-1 bg-primary text-primary-foreground text-[10px] font-mono hover:bg-primary/80 transition-colors rounded-sm"
+        >
+          Submit
+        </button>
+        <button
+          onClick={onSkip}
+          className="px-2 py-1 border border-border text-muted-foreground text-[10px] font-mono hover:text-foreground transition-colors rounded-sm"
+        >
+          Skip
+        </button>
+      </div>
+    </div>
+  );
+}
 
 const ChatBot = forwardRef<ChatBotRef>((_props, ref) => {
   const [isOpen, setIsOpen] = useState(false);
@@ -89,6 +120,14 @@ const ChatBot = forwardRef<ChatBotRef>((_props, ref) => {
   };
 
   const handleFeedback = async (msgId: string, type: 'up' | 'down') => {
+    if (type === 'down') {
+      // Open text input for negative feedback
+      setMessages((prev) =>
+        prev.map((m) => (m.id === msgId ? { ...m, feedbackGiven: type, feedbackTextOpen: true } : m))
+      );
+      return;
+    }
+    // Positive feedback sends immediately
     setMessages((prev) =>
       prev.map((m) => (m.id === msgId ? { ...m, feedbackGiven: type } : m))
     );
@@ -96,7 +135,22 @@ const ChatBot = forwardRef<ChatBotRef>((_props, ref) => {
       await fetch('https://shrebuck.app.n8n.cloud/webhook/user-feedback', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ session_id: SESSION_ID, feedback: type }),
+        body: JSON.stringify({ session_id: SESSION_ID, thumbs: 'up', feedback_text: '' }),
+      });
+    } catch {
+      // silently fail
+    }
+  };
+
+  const handleFeedbackSubmit = async (msgId: string, feedbackText: string) => {
+    setMessages((prev) =>
+      prev.map((m) => (m.id === msgId ? { ...m, feedbackTextOpen: false } : m))
+    );
+    try {
+      await fetch('https://shrebuck.app.n8n.cloud/webhook/user-feedback', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ session_id: SESSION_ID, thumbs: 'down', feedback_text: feedbackText }),
       });
     } catch {
       // silently fail
@@ -184,11 +238,16 @@ const ChatBot = forwardRef<ChatBotRef>((_props, ref) => {
                     </div>
                   )}
                   {msg.showFeedback && (
-                    <div className="ml-8 mt-2 flex items-center gap-2">
-                      {msg.feedbackGiven ? (
+                    <div className="ml-8 mt-2">
+                      {msg.feedbackGiven && !msg.feedbackTextOpen ? (
                         <span className="text-[10px] text-muted-foreground">Thanks for your feedback!</span>
+                      ) : msg.feedbackTextOpen ? (
+                        <FeedbackTextInput
+                          onSubmit={(text) => handleFeedbackSubmit(msg.id, text)}
+                          onSkip={() => handleFeedbackSubmit(msg.id, '')}
+                        />
                       ) : (
-                        <>
+                        <div className="flex items-center gap-2">
                           <span className="text-[10px] text-muted-foreground">Was this helpful?</span>
                           <button
                             onClick={() => handleFeedback(msg.id, 'up')}
@@ -202,7 +261,7 @@ const ChatBot = forwardRef<ChatBotRef>((_props, ref) => {
                           >
                             <ThumbsDown className="w-3 h-3 text-muted-foreground hover:text-destructive" />
                           </button>
-                        </>
+                        </div>
                       )}
                     </div>
                   )}
