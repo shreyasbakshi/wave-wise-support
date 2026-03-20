@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, forwardRef, useImperativeHandle } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { MessageCircle, X, Send, Bot, User, LogIn } from 'lucide-react';
+import { MessageCircle, X, Send, Bot, User, LogIn, ThumbsUp, ThumbsDown } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 
 export interface ChatBotRef {
@@ -13,31 +13,12 @@ interface Message {
   role: 'user' | 'assistant';
   content: string;
   showLoginPrompt?: boolean;
+  showFeedback?: boolean;
+  feedbackGiven?: 'up' | 'down' | null;
+  escalated?: boolean;
 }
 
-const botResponses: Record<string, string> = {
-  'data': 'To check your data balance, dial *121# or open the SignalWave app → My Usage. You can also SMS "BAL" to 121.',
-  'recharge': 'You can recharge through: 1) SignalWave App 2) Website signalwave.in/recharge 3) Paytm/PhonePe 4) Nearest retail store',
-  'speed': 'If you\'re experiencing slow speeds: 1) Restart your device 2) Check signal strength 3) Try toggling airplane mode. If the issue persists, I can create a support ticket for you.',
-  'bill': 'View your bill: App → My Account → Bills. Download PDF or get it emailed. For billing disputes, I can create a ticket for you.',
-  'plan': 'To view or change your plan, go to App → My Plan → Explore Plans. You can also visit signalwave.in/plans for all current offers.',
-  'roaming': 'International roaming can be activated by dialing *123*1# or through the app. We recommend our travel packs starting at ₹499 for 7 days.',
-  'default': 'I understand your query. Let me help you further. Would you like me to create a support ticket for this?',
-};
-
-const ticketKeywords = ['ticket', 'create', 'support', 'complaint', 'issue', 'problem', 'escalate', 'help me', 'not working', 'broken'];
-
-function getResponse(query: string): { text: string; needsTicket: boolean } {
-  const q = query.toLowerCase();
-  const needsTicket = ticketKeywords.some(kw => q.includes(kw));
-
-  for (const [key, response] of Object.entries(botResponses)) {
-    if (key !== 'default' && q.includes(key)) {
-      return { text: response, needsTicket };
-    }
-  }
-  return { text: botResponses['default'], needsTicket: true };
-}
+const SESSION_ID = crypto.randomUUID();
 
 const ChatBot = forwardRef<ChatBotRef>((_props, ref) => {
   const [isOpen, setIsOpen] = useState(false);
@@ -54,31 +35,77 @@ const ChatBot = forwardRef<ChatBotRef>((_props, ref) => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isTyping]);
 
-  const processMessage = (text: string) => {
+  const processMessage = async (text: string) => {
     const userMsg: Message = { id: Date.now().toString(), role: 'user', content: text };
     setMessages((prev) => [...prev, userMsg]);
     setIsTyping(true);
 
-    setTimeout(() => {
-      const { text: responseText, needsTicket } = getResponse(text);
-      const showLoginPrompt = needsTicket && !user;
+    try {
+      const response = await fetch('https://shrebuck.app.n8n.cloud/webhook/customer-query', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ session_id: SESSION_ID, query: text }),
+      });
+      const data = await response.json();
 
-      const responseContent = showLoginPrompt
-        ? `${responseText}\n\nTo create a support ticket, please log in to your account first.`
-        : responseText;
-
+      if (data.escalate) {
+        const needsLogin = !user;
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: (Date.now() + 1).toString(),
+            role: 'assistant',
+            content: needsLogin
+              ? (data.answer || 'This issue needs to be escalated to our support team.') + '\n\nTo create a support ticket, please log in to your account first.'
+              : (data.answer || 'This issue needs to be escalated. I\'ll create a support ticket for you.'),
+            showLoginPrompt: needsLogin,
+            escalated: true,
+          },
+        ]);
+      } else {
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: (Date.now() + 1).toString(),
+            role: 'assistant',
+            content: data.answer || 'I couldn\'t process your query. Please try again.',
+            showFeedback: true,
+            feedbackGiven: null,
+          },
+        ]);
+      }
+    } catch {
       setMessages((prev) => [
         ...prev,
-        { id: (Date.now() + 1).toString(), role: 'assistant', content: responseContent, showLoginPrompt },
+        {
+          id: (Date.now() + 1).toString(),
+          role: 'assistant',
+          content: 'Sorry, I\'m having trouble connecting right now. Please try again in a moment.',
+        },
       ]);
+    } finally {
       setIsTyping(false);
-    }, 1200);
+    }
+  };
+
+  const handleFeedback = async (msgId: string, type: 'up' | 'down') => {
+    setMessages((prev) =>
+      prev.map((m) => (m.id === msgId ? { ...m, feedbackGiven: type } : m))
+    );
+    try {
+      await fetch('https://shrebuck.app.n8n.cloud/webhook/user-feedback', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ session_id: SESSION_ID, feedback: type }),
+      });
+    } catch {
+      // silently fail
+    }
   };
 
   useImperativeHandle(ref, () => ({
     openWithMessage: (message: string) => {
       setIsOpen(true);
-      // Small delay to let the chat window render
       setTimeout(() => processMessage(message), 100);
     },
   }));
@@ -96,7 +123,6 @@ const ChatBot = forwardRef<ChatBotRef>((_props, ref) => {
 
   return (
     <>
-      {/* Floating trigger */}
       <motion.button
         onClick={() => setIsOpen(!isOpen)}
         className="fixed bottom-6 right-6 z-50 w-14 h-14 rounded-full bg-primary flex items-center justify-center glow-blue"
@@ -110,7 +136,6 @@ const ChatBot = forwardRef<ChatBotRef>((_props, ref) => {
         )}
       </motion.button>
 
-      {/* Chat window */}
       <AnimatePresence>
         {isOpen && (
           <motion.div
@@ -119,7 +144,6 @@ const ChatBot = forwardRef<ChatBotRef>((_props, ref) => {
             exit={{ opacity: 0, y: 20, scale: 0.9 }}
             className="fixed bottom-24 right-6 z-50 w-[360px] max-w-[calc(100vw-48px)] h-[500px] flex flex-col border-2 border-border bg-surface-dark retro-border"
           >
-            {/* Header */}
             <div className="px-4 py-3 border-b border-border bg-surface-mid flex items-center gap-2">
               <Bot className="w-5 h-5 text-primary" />
               <div>
@@ -128,7 +152,6 @@ const ChatBot = forwardRef<ChatBotRef>((_props, ref) => {
               </div>
             </div>
 
-            {/* Messages */}
             <div className="flex-1 overflow-y-auto p-3 space-y-3">
               {messages.map((msg) => (
                 <div key={msg.id}>
@@ -160,6 +183,29 @@ const ChatBot = forwardRef<ChatBotRef>((_props, ref) => {
                       </button>
                     </div>
                   )}
+                  {msg.showFeedback && (
+                    <div className="ml-8 mt-2 flex items-center gap-2">
+                      {msg.feedbackGiven ? (
+                        <span className="text-[10px] text-muted-foreground">Thanks for your feedback!</span>
+                      ) : (
+                        <>
+                          <span className="text-[10px] text-muted-foreground">Was this helpful?</span>
+                          <button
+                            onClick={() => handleFeedback(msg.id, 'up')}
+                            className="p-1 hover:bg-primary/20 rounded-sm transition-colors"
+                          >
+                            <ThumbsUp className="w-3 h-3 text-muted-foreground hover:text-primary" />
+                          </button>
+                          <button
+                            onClick={() => handleFeedback(msg.id, 'down')}
+                            className="p-1 hover:bg-destructive/20 rounded-sm transition-colors"
+                          >
+                            <ThumbsDown className="w-3 h-3 text-muted-foreground hover:text-destructive" />
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  )}
                 </div>
               ))}
               {isTyping && (
@@ -175,7 +221,6 @@ const ChatBot = forwardRef<ChatBotRef>((_props, ref) => {
               <div ref={bottomRef} />
             </div>
 
-            {/* Input */}
             <div className="p-3 border-t border-border bg-surface-mid">
               <div className="flex gap-2">
                 <input
