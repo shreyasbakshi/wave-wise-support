@@ -15,6 +15,7 @@ interface Message {
   showLoginPrompt?: boolean;
   showFeedback?: boolean;
   feedbackGiven?: 'up' | 'down' | null;
+  feedbackTextOpen?: boolean;
   escalated?: boolean;
 }
 
