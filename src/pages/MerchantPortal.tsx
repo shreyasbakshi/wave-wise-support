@@ -83,19 +83,38 @@ function DashboardView({ tickets }: { tickets: TicketType[] }) {
 function TicketDetailMerchant({ ticket, onBack }: { ticket: TicketType; onBack: () => void }) {
   const [response, setResponse] = useState('');
   const [spellChecked, setSpellChecked] = useState(false);
-  const [saved, setSaved] = useState(false);
+  const [sending, setSending] = useState(false);
+  const [sent, setSent] = useState(false);
+  const [useGpt, setUseGpt] = useState(false);
+  const [error, setError] = useState('');
   const customer = customers.find((c) => c.id === ticket.customerId);
 
   const handleSpellCheck = () => {
-    // Mock spell check
     setSpellChecked(true);
     setTimeout(() => setSpellChecked(false), 2000);
   };
 
-  const handleSave = () => {
+  const handleSend = async () => {
     if (!response.trim()) return;
-    setSaved(true);
-    setTimeout(() => setSaved(false), 3000);
+    setSending(true);
+    setError('');
+    try {
+      await fetch('https://shrebuck.app.n8n.cloud/webhook/human-response-v3', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          session_id: ticket.session_id || ticket.id,
+          merchant_answer: response,
+          faq_raised: ticket.query || ticket.subject,
+          use_gpt: useGpt,
+        }),
+      });
+      setSent(true);
+    } catch (err) {
+      setError('Failed to send response. Please try again.');
+    } finally {
+      setSending(false);
+    }
   };
 
   return (
@@ -124,6 +143,11 @@ function TicketDetailMerchant({ ticket, onBack }: { ticket: TicketType; onBack: 
         </div>
         <h2 className="font-display text-lg text-foreground mb-2">{ticket.subject}</h2>
         <p className="text-sm text-muted-foreground">{ticket.description}</p>
+        {ticket.query && (
+          <p className="text-[10px] font-mono text-muted-foreground mt-2">
+            ORIGINAL QUERY: {ticket.query}
+          </p>
+        )}
       </div>
 
       {/* Conversation */}
@@ -164,7 +188,26 @@ function TicketDetailMerchant({ ticket, onBack }: { ticket: TicketType; onBack: 
           placeholder="Type your resolution response..."
           className="w-full bg-surface-mid border border-border px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-secondary focus:outline-none resize-none h-28 font-mono mb-3"
           spellCheck
+          disabled={sent}
         />
+
+        {/* GPT Toggle */}
+        <div className="flex items-center gap-2 mb-3">
+          <button
+            onClick={() => setUseGpt(!useGpt)}
+            className={`relative w-9 h-5 rounded-full transition-colors ${
+              useGpt ? 'bg-secondary' : 'bg-muted'
+            }`}
+          >
+            <span className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-foreground transition-transform ${
+              useGpt ? 'translate-x-4' : 'translate-x-0'
+            }`} />
+          </button>
+          <span className="text-[10px] font-mono text-muted-foreground">
+            USE GPT TO ENHANCE RESPONSE
+          </span>
+        </div>
+
         <div className="flex items-center gap-2">
           <button
             onClick={handleSpellCheck}
@@ -173,26 +216,31 @@ function TicketDetailMerchant({ ticket, onBack }: { ticket: TicketType; onBack: 
                 ? 'border-neon-green text-neon-green'
                 : 'border-border text-muted-foreground hover:border-secondary hover:text-secondary'
             }`}
+            disabled={sent}
           >
             <SpellCheck className="w-3.5 h-3.5" />
             {spellChecked ? 'CHECKED ✓' : 'SPELL CHECK'}
           </button>
           <button
-            onClick={handleSave}
-            className={`flex items-center gap-1.5 px-4 py-1.5 text-xs font-mono transition-all ${
-              saved
+            onClick={handleSend}
+            disabled={sending || sent || !response.trim()}
+            className={`flex items-center gap-1.5 px-4 py-1.5 text-xs font-mono transition-all disabled:opacity-50 ${
+              sent
                 ? 'bg-neon-green/20 text-neon-green border border-neon-green/50'
                 : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
             }`}
           >
-            {saved ? <CheckCircle className="w-3.5 h-3.5" /> : <Save className="w-3.5 h-3.5" />}
-            {saved ? 'SAVED & SENT' : 'SAVE RESPONSE'}
+            {sent ? <CheckCircle className="w-3.5 h-3.5" /> : sending ? <Clock className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
+            {sent ? 'SENT' : sending ? 'SENDING...' : 'SEND RESPONSE'}
           </button>
         </div>
-        {saved && (
+        {sent && (
           <p className="mt-2 text-xs text-neon-green font-mono">
-            ✓ Response saved. Customer has been notified.
+            ✓ Response sent via webhook. Customer will be notified.
           </p>
+        )}
+        {error && (
+          <p className="mt-2 text-xs text-destructive font-mono">✗ {error}</p>
         )}
       </div>
     </div>
