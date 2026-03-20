@@ -21,7 +21,36 @@ interface Message {
 
 const SESSION_ID = crypto.randomUUID();
 
-const ChatBot = forwardRef<ChatBotRef>((_props, ref) => {
+function FeedbackTextInput({ onSubmit, onSkip }: { onSubmit: (text: string) => void; onSkip: () => void }) {
+  const [text, setText] = useState('');
+  return (
+    <div className="space-y-1.5">
+      <p className="text-[10px] text-muted-foreground">What could be improved?</p>
+      <textarea
+        value={text}
+        onChange={(e) => setText(e.target.value)}
+        placeholder="Tell us more (optional)..."
+        className="w-full bg-surface-dark border border-border px-2 py-1.5 text-[11px] text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none resize-none"
+        rows={2}
+      />
+      <div className="flex gap-1.5">
+        <button
+          onClick={() => onSubmit(text)}
+          className="px-2 py-1 bg-primary text-primary-foreground text-[10px] font-mono hover:bg-primary/80 transition-colors rounded-sm"
+        >
+          Submit
+        </button>
+        <button
+          onClick={onSkip}
+          className="px-2 py-1 border border-border text-muted-foreground text-[10px] font-mono hover:text-foreground transition-colors rounded-sm"
+        >
+          Skip
+        </button>
+      </div>
+    </div>
+  );
+}
+
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([
     { id: '0', role: 'assistant', content: 'Namaste! 🙏 Welcome to SignalWave support. How can I help you today?' },
