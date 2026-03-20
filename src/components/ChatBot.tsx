@@ -51,6 +51,7 @@ function FeedbackTextInput({ onSubmit, onSkip }: { onSubmit: (text: string) => v
   );
 }
 
+const ChatBot = forwardRef<ChatBotRef>((_props, ref) => {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([
     { id: '0', role: 'assistant', content: 'Namaste! 🙏 Welcome to SignalWave support. How can I help you today?' },
