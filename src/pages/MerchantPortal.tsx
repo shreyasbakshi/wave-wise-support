@@ -1,14 +1,15 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
   LayoutDashboard, Ticket, BookOpen, Send, CheckCircle, AlertTriangle,
-  Clock, Eye, Plus, Save, SpellCheck, Wand2, FileText
+  Clock, Eye, Plus, Save, SpellCheck, Wand2, FileText, RefreshCw
 } from 'lucide-react';
 import Header from '@/components/Header';
 import TicketCard from '@/components/TicketCard';
+import { supabase } from '@/integrations/supabase/client';
 import {
-  tickets as allTickets, customers, kbArticles as initialKBArticles,
+  customers, kbArticles as initialKBArticles,
   ticketCategories, type Ticket as TicketType, type KBArticle
 } from '@/data/mockData';
 
