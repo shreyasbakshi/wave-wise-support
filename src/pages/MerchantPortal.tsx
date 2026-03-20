@@ -1,14 +1,15 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
   LayoutDashboard, Ticket, BookOpen, Send, CheckCircle, AlertTriangle,
-  Clock, Eye, Plus, Save, SpellCheck, Wand2, FileText
+  Clock, Eye, Plus, Save, SpellCheck, Wand2, FileText, RefreshCw
 } from 'lucide-react';
 import Header from '@/components/Header';
 import TicketCard from '@/components/TicketCard';
+import { supabase } from '@/integrations/supabase/client';
 import {
-  tickets as allTickets, customers, kbArticles as initialKBArticles,
+  customers, kbArticles as initialKBArticles,
   ticketCategories, type Ticket as TicketType, type KBArticle
 } from '@/data/mockData';
 
@@ -409,6 +410,8 @@ export default function MerchantPortal() {
   const location = useLocation();
   const [selectedTicket, setSelectedTicket] = useState<TicketType | null>(null);
   const [filterCategory, setFilterCategory] = useState('all');
+  const [tickets, setTickets] = useState<TicketType[]>([]);
+  const [loading, setLoading] = useState(true);
 
   const path = location.pathname;
   const activeTab: Tab = path.includes('/knowledge-base') ? 'knowledge-base' :
@@ -416,9 +419,41 @@ export default function MerchantPortal() {
 
   const merchantName = localStorage.getItem('merchantName');
 
+  const fetchEscalations = useCallback(async () => {
+    setLoading(true);
+    const { data, error } = await supabase
+      .from('escalations')
+      .select('*')
+      .eq('status', 'pending')
+      .order('created_at', { ascending: false });
+
+    if (data && !error) {
+      const mapped: TicketType[] = data.map((row: any) => ({
+        id: row.id,
+        customerId: '',
+        subject: row.query,
+        description: row.query,
+        status: row.status === 'pending' ? 'open' as const : 'resolved' as const,
+        category: row.category || 'General',
+        createdAt: row.created_at,
+        updatedAt: row.updated_at,
+        responses: [],
+        session_id: row.session_id,
+        query: row.query,
+        customerRating: null,
+      }));
+      setTickets(mapped);
+    }
+    setLoading(false);
+  }, []);
+
   useEffect(() => {
-    if (!localStorage.getItem('merchantLoggedIn')) navigate('/merchant/login');
-  }, [navigate]);
+    if (!localStorage.getItem('merchantLoggedIn')) {
+      navigate('/merchant/login');
+      return;
+    }
+    fetchEscalations();
+  }, [navigate, fetchEscalations]);
 
   const handleLogout = () => {
     localStorage.removeItem('merchantLoggedIn');
@@ -426,8 +461,9 @@ export default function MerchantPortal() {
     navigate('/merchant/login');
   };
 
-  const emptyTickets: TicketType[] = [];
-  const filteredTickets = emptyTickets;
+  const filteredTickets = filterCategory === 'all'
+    ? tickets
+    : tickets.filter((t) => t.category === filterCategory);
 
   const tabs: { key: Tab; label: string; path: string; icon: React.ElementType }[] = [
     { key: 'dashboard', label: 'Dashboard', path: '/merchant/dashboard', icon: LayoutDashboard },
@@ -467,7 +503,7 @@ export default function MerchantPortal() {
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.2 }}
         >
-          {activeTab === 'dashboard' && <DashboardView tickets={emptyTickets} />}
+          {activeTab === 'dashboard' && <DashboardView tickets={tickets} />}
 
           {activeTab === 'tickets' && !selectedTicket && (
             <div>
