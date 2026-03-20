@@ -28,6 +28,8 @@ export interface Ticket {
   updatedAt: string;
   responses: TicketResponse[];
   customerRating?: 'up' | 'down' | null;
+  session_id?: string;
+  query?: string;
 }
 
 export interface TicketResponse {
