@@ -90,6 +90,14 @@ const ChatBot = forwardRef<ChatBotRef>((_props, ref) => {
   };
 
   const handleFeedback = async (msgId: string, type: 'up' | 'down') => {
+    if (type === 'down') {
+      // Open text input for negative feedback
+      setMessages((prev) =>
+        prev.map((m) => (m.id === msgId ? { ...m, feedbackGiven: type, feedbackTextOpen: true } : m))
+      );
+      return;
+    }
+    // Positive feedback sends immediately
     setMessages((prev) =>
       prev.map((m) => (m.id === msgId ? { ...m, feedbackGiven: type } : m))
     );
@@ -97,7 +105,22 @@ const ChatBot = forwardRef<ChatBotRef>((_props, ref) => {
       await fetch('https://shrebuck.app.n8n.cloud/webhook/user-feedback', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ session_id: SESSION_ID, feedback: type }),
+        body: JSON.stringify({ session_id: SESSION_ID, thumbs: 'up', feedback_text: '' }),
+      });
+    } catch {
+      // silently fail
+    }
+  };
+
+  const handleFeedbackSubmit = async (msgId: string, feedbackText: string) => {
+    setMessages((prev) =>
+      prev.map((m) => (m.id === msgId ? { ...m, feedbackTextOpen: false } : m))
+    );
+    try {
+      await fetch('https://shrebuck.app.n8n.cloud/webhook/user-feedback', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ session_id: SESSION_ID, thumbs: 'down', feedback_text: feedbackText }),
       });
     } catch {
       // silently fail
