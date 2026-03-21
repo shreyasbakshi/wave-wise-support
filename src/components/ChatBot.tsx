@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, forwardRef, useImperativeHandle } from 're
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MessageCircle, X, Send, Bot, User, LogIn, ThumbsUp, ThumbsDown } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 
 export interface ChatBotRef {
@@ -19,7 +20,24 @@ interface Message {
   escalated?: boolean;
 }
 
+interface CustomerQueryResponse {
+  answer?: string;
+  escalate?: boolean;
+  session_id?: string;
+}
+
 const SESSION_ID = crypto.randomUUID();
+const CUSTOMER_QUERY_WEBHOOK = 'https://shrebuck.app.n8n.cloud/webhook/050ec3eb-3611-4678-8b4a-83111e4c248e';
+
+function parseCustomerQueryResponse(raw: string): CustomerQueryResponse {
+  if (!raw.trim()) return {};
+
+  try {
+    return JSON.parse(raw) as CustomerQueryResponse;
+  } catch {
+    return { answer: raw };
+  }
+}
 
 function FeedbackTextInput({ onSubmit, onSkip }: { onSubmit: (text: string) => void; onSkip: () => void }) {
   const [text, setText] = useState('');
@@ -66,29 +84,55 @@ const ChatBot = forwardRef<ChatBotRef>((_props, ref) => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isTyping]);
 
+  const createEscalation = async (query: string) => {
+    if (!user?.email) return false;
+
+    const { error } = await supabase.from('escalations').insert({
+      session_id: SESSION_ID,
+      query,
+      customer_email: user.email,
+      status: 'pending',
+    });
+
+    return !error;
+  };
+
   const processMessage = async (text: string) => {
     const userMsg: Message = { id: Date.now().toString(), role: 'user', content: text };
     setMessages((prev) => [...prev, userMsg]);
     setIsTyping(true);
 
     try {
-      const response = await fetch('https://shrebuck.app.n8n.cloud/webhook/050ec3eb-3611-4678-8b4a-83111e4c248e', {
+      const response = await fetch(CUSTOMER_QUERY_WEBHOOK, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ session_id: SESSION_ID, query: text }),
       });
-      const data = await response.json();
 
-      if (data.escalate) {
+      if (!response.ok) {
+        throw new Error('Customer query webhook failed');
+      }
+
+      const data = parseCustomerQueryResponse(await response.text());
+      const answer = data.answer?.trim();
+      const shouldEscalate = Boolean(data.escalate) || !answer;
+
+      if (shouldEscalate) {
         const needsLogin = !user;
+        const ticketCreated = needsLogin ? false : await createEscalation(text);
+        const baseMessage = answer || 'I couldn\'t find a matching answer in our knowledge base.';
+        const followUpMessage = needsLogin
+          ? 'Please log in to create a support ticket.'
+          : ticketCreated
+            ? 'I created a support ticket for you. Our support team will review it shortly.'
+            : 'This needs human support. Please check your tickets page, or try again in a moment if the ticket does not appear.';
+
         setMessages((prev) => [
           ...prev,
           {
             id: (Date.now() + 1).toString(),
             role: 'assistant',
-            content: needsLogin
-              ? (data.answer || 'This issue needs to be escalated to our support team.') + '\n\nTo create a support ticket, please log in to your account first.'
-              : (data.answer || 'This issue needs to be escalated. I\'ll create a support ticket for you.'),
+            content: `${baseMessage}\n\n${followUpMessage}`,
             showLoginPrompt: needsLogin,
             escalated: true,
           },
@@ -99,7 +143,7 @@ const ChatBot = forwardRef<ChatBotRef>((_props, ref) => {
           {
             id: (Date.now() + 1).toString(),
             role: 'assistant',
-            content: data.answer || 'I couldn\'t process your query. Please try again.',
+            content: answer,
             showFeedback: true,
             feedbackGiven: null,
           },
