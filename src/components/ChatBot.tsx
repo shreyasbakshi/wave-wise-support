@@ -72,7 +72,7 @@ const ChatBot = forwardRef<ChatBotRef>((_props, ref) => {
     setIsTyping(true);
 
     try {
-      const response = await fetch('https://shrebuck.app.n8n.cloud/webhook/customer-query', {
+      const response = await fetch('https://shrebuck.app.n8n.cloud/webhook/050ec3eb-3611-4678-8b4a-83111e4c248e', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ session_id: SESSION_ID, query: text }),
