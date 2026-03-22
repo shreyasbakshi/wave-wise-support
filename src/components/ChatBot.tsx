@@ -225,6 +225,23 @@ const ChatBot = forwardRef<ChatBotRef>((_props, ref) => {
     processMessage(currentInput);
   };
 
+  const handleCreateTicket = async (msgId: string) => {
+    const ticketCreated = await createEscalation(lastQuery);
+    setMessages((prev) =>
+      prev.map((m) =>
+        m.id === msgId
+          ? {
+              ...m,
+              showCreateTicket: false,
+              content: ticketCreated
+                ? `${m.content.split('\n\n')[0]}\n\nTicket created! You can track it under "My Tickets" in your dashboard.`
+                : `${m.content.split('\n\n')[0]}\n\nFailed to create ticket. Please try again.`,
+            }
+          : m
+      )
+    );
+  };
+
   const handleLoginRedirect = () => {
     navigate('/customer/login?redirect=/customer/tickets');
   };
