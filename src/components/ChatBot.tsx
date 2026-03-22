@@ -121,24 +121,31 @@ const ChatBot = forwardRef<ChatBotRef>((_props, ref) => {
 
       if (shouldEscalate) {
         const needsLogin = !user;
-        const ticketCreated = needsLogin ? false : await createEscalation(text);
         const baseMessage = answer || 'I couldn\'t find a matching answer in our knowledge base.';
-        const followUpMessage = needsLogin
-          ? 'Please log in to create a support ticket.'
-          : ticketCreated
-            ? 'I\'ve created a support ticket for your query. You can track it under "My Tickets" in your dashboard.'
-            : 'This needs human support. Please check your tickets page, or try again in a moment if the ticket does not appear.';
 
-        setMessages((prev) => [
-          ...prev,
-          {
-            id: (Date.now() + 1).toString(),
-            role: 'assistant',
-            content: `${baseMessage}\n\n${followUpMessage}`,
-            showLoginPrompt: needsLogin,
-            escalated: true,
-          },
-        ]);
+        if (needsLogin) {
+          setMessages((prev) => [
+            ...prev,
+            {
+              id: (Date.now() + 1).toString(),
+              role: 'assistant',
+              content: `${baseMessage}\n\nPlease log in to create a support ticket.`,
+              showLoginPrompt: true,
+              escalated: true,
+            },
+          ]);
+        } else {
+          setMessages((prev) => [
+            ...prev,
+            {
+              id: (Date.now() + 1).toString(),
+              role: 'assistant',
+              content: `${baseMessage}\n\nWould you like me to create a support ticket for this?`,
+              escalated: true,
+              showCreateTicket: true,
+            },
+          ]);
+        }
       } else {
         setMessages((prev) => [
           ...prev,
