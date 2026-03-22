@@ -424,7 +424,6 @@ export default function MerchantPortal() {
     const { data, error } = await supabase
       .from('escalations')
       .select('*')
-      .eq('status', 'pending')
       .order('created_at', { ascending: false });
 
     if (data && !error) {
@@ -433,11 +432,11 @@ export default function MerchantPortal() {
         customerId: '',
         subject: row.query,
         description: row.query,
-        status: row.status === 'pending' ? 'open' as const : 'resolved' as const,
+        status: row.status === 'pending' ? 'open' as const : row.status === 'resolved' ? 'resolved' as const : 'closed' as const,
         category: row.category || 'General',
         createdAt: row.created_at,
         updatedAt: row.updated_at,
-        responses: [],
+        responses: row.merchant_answer ? [{ id: '1', from: 'merchant' as const, message: row.merchant_answer, timestamp: row.updated_at }] : [],
         session_id: row.session_id,
         query: row.query,
         customerRating: null,

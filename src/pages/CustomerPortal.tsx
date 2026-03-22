@@ -1,34 +1,35 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Ticket, MessageSquare, ThumbsUp, ThumbsDown, Send, CreditCard, Clock } from 'lucide-react';
+import { Ticket, MessageSquare, Send, Clock, RefreshCw } from 'lucide-react';
 import Header from '@/components/Header';
-import TicketCard from '@/components/TicketCard';
 import ChatBot from '@/components/ChatBot';
-import { tickets as allTickets, queries as allQueries, type Ticket as TicketType } from '@/data/mockData';
 import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
 
 type Tab = 'tickets' | 'queries';
 
-function TicketDetailView({ ticket, onBack }: { ticket: TicketType; onBack: () => void }) {
-  const [replyText, setReplyText] = useState('');
-  const [localTicket, setLocalTicket] = useState(ticket);
+interface EscalationRow {
+  id: string;
+  session_id: string;
+  query: string;
+  customer_email: string | null;
+  customer_name: string | null;
+  category: string | null;
+  status: string;
+  merchant_answer: string | null;
+  created_at: string;
+  updated_at: string;
+}
 
-  const handleReply = () => {
-    if (!replyText.trim()) return;
-    setLocalTicket((prev) => ({
-      ...prev,
-      responses: [
-        ...prev.responses,
-        { id: Date.now().toString(), from: 'customer', message: replyText, timestamp: new Date().toISOString() },
-      ],
-    }));
-    setReplyText('');
-  };
+const statusDisplay: Record<string, { label: string; className: string }> = {
+  pending: { label: 'AWAITING RESPONSE', className: 'border-neon-orange text-neon-orange bg-neon-orange/10' },
+  resolved: { label: 'RESPONSE RECEIVED', className: 'border-neon-green text-neon-green bg-neon-green/10' },
+  closed: { label: 'CLOSED', className: 'border-muted-foreground text-muted-foreground bg-muted/50' },
+};
 
-  const handleRating = (rating: 'up' | 'down') => {
-    setLocalTicket((prev) => ({ ...prev, customerRating: rating }));
-  };
+function TicketDetailView({ ticket, onBack }: { ticket: EscalationRow; onBack: () => void }) {
+  const display = statusDisplay[ticket.status] || statusDisplay.pending;
 
   return (
     <div>
@@ -38,104 +39,54 @@ function TicketDetailView({ ticket, onBack }: { ticket: TicketType; onBack: () =
 
       <div className="border border-border bg-card p-6">
         <div className="flex items-center gap-2 mb-2">
-          <span className="text-[10px] font-mono text-muted-foreground">{localTicket.id}</span>
-          <span className={`text-[10px] px-2 py-0.5 border font-mono uppercase ${
-            localTicket.status === 'open' ? 'border-neon-orange text-neon-orange' :
-            localTicket.status === 'pending' ? 'border-neon-yellow text-neon-yellow' :
-            localTicket.status === 'resolved' ? 'border-neon-green text-neon-green' :
-            'border-muted-foreground text-muted-foreground'
-          }`}>
-            {localTicket.status}
+          <span className="text-[10px] font-mono text-muted-foreground">{ticket.id.slice(0, 8)}</span>
+          <span className={`text-[10px] px-2 py-0.5 border font-mono uppercase ${display.className}`}>
+            {display.label}
           </span>
-          <span className="text-[10px] px-2 py-0.5 bg-surface-light border border-border">{localTicket.category}</span>
+          <span className="text-[10px] px-2 py-0.5 bg-surface-light border border-border">
+            {ticket.category || 'General'}
+          </span>
         </div>
-        <h2 className="font-display text-lg text-foreground mb-2">{localTicket.subject}</h2>
-        <p className="text-sm text-muted-foreground mb-4">{localTicket.description}</p>
+        <h2 className="font-display text-lg text-foreground mb-2">{ticket.query}</h2>
         <p className="text-[10px] text-muted-foreground flex items-center gap-1">
           <Clock className="w-3 h-3" />
-          Created: {new Date(localTicket.createdAt).toLocaleString('en-IN')}
+          Created: {new Date(ticket.created_at).toLocaleString('en-IN')}
         </p>
       </div>
 
-      {/* Responses */}
+      {/* Your query */}
       <div className="mt-4 space-y-3">
         <h3 className="font-display text-sm text-muted-foreground">CONVERSATION</h3>
-        {localTicket.responses.map((res) => (
-          <div
-            key={res.id}
-            className={`border p-4 ${
-              res.from === 'customer'
-                ? 'border-primary/30 bg-primary/5 ml-8'
-                : res.from === 'merchant'
-                ? 'border-secondary/30 bg-secondary/5 mr-8'
-                : 'border-border bg-surface-mid mx-4'
-            }`}
-          >
+        <div className="border border-primary/30 bg-primary/5 ml-8 p-4">
+          <div className="flex items-center gap-2 mb-2">
+            <span className="text-[10px] font-mono uppercase text-primary">&gt; YOU</span>
+            <span className="text-[10px] text-muted-foreground">
+              {new Date(ticket.created_at).toLocaleString('en-IN')}
+            </span>
+          </div>
+          <p className="text-sm text-foreground">{ticket.query}</p>
+        </div>
+
+        {/* Merchant response */}
+        {ticket.merchant_answer && (
+          <div className="border border-secondary/30 bg-secondary/5 mr-8 p-4">
             <div className="flex items-center gap-2 mb-2">
-              <span className={`text-[10px] font-mono uppercase ${
-                res.from === 'customer' ? 'text-primary' :
-                res.from === 'merchant' ? 'text-secondary' : 'text-muted-foreground'
-              }`}>
-                {res.from === 'customer' ? '> YOU' : res.from === 'merchant' ? '> SUPPORT AGENT' : '> SYSTEM'}
-              </span>
+              <span className="text-[10px] font-mono uppercase text-secondary">&gt; SUPPORT AGENT</span>
               <span className="text-[10px] text-muted-foreground">
-                {new Date(res.timestamp).toLocaleString('en-IN')}
+                {new Date(ticket.updated_at).toLocaleString('en-IN')}
               </span>
             </div>
-            <p className="text-sm text-foreground">{res.message}</p>
+            <p className="text-sm text-foreground">{ticket.merchant_answer}</p>
           </div>
-        ))}
+        )}
+
+        {!ticket.merchant_answer && ticket.status === 'pending' && (
+          <div className="border border-border bg-surface-mid p-4 text-center">
+            <Clock className="w-5 h-5 text-muted-foreground mx-auto mb-1" />
+            <p className="text-xs text-muted-foreground font-mono">Awaiting merchant response...</p>
+          </div>
+        )}
       </div>
-
-      {/* Rating */}
-      {localTicket.status === 'resolved' && (
-        <div className="mt-4 border border-border p-4 bg-surface-mid">
-          <p className="text-xs font-mono text-muted-foreground mb-2">Was this resolution helpful?</p>
-          <div className="flex gap-3">
-            <button
-              onClick={() => handleRating('up')}
-              className={`flex items-center gap-1 px-3 py-1.5 border text-xs font-mono transition-all ${
-                localTicket.customerRating === 'up'
-                  ? 'border-neon-green text-neon-green bg-neon-green/10'
-                  : 'border-border text-muted-foreground hover:border-neon-green hover:text-neon-green'
-              }`}
-            >
-              <ThumbsUp className="w-3.5 h-3.5" /> HELPFUL
-            </button>
-            <button
-              onClick={() => handleRating('down')}
-              className={`flex items-center gap-1 px-3 py-1.5 border text-xs font-mono transition-all ${
-                localTicket.customerRating === 'down'
-                  ? 'border-destructive text-destructive bg-destructive/10'
-                  : 'border-border text-muted-foreground hover:border-destructive hover:text-destructive'
-              }`}
-            >
-              <ThumbsDown className="w-3.5 h-3.5" /> NOT HELPFUL
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Reply box */}
-      {localTicket.status !== 'closed' && (
-        <div className="mt-4 border border-border bg-surface-dark p-4">
-          <p className="text-[10px] font-mono text-muted-foreground mb-2">REPLY TO TICKET</p>
-          <div className="flex gap-2">
-            <textarea
-              value={replyText}
-              onChange={(e) => setReplyText(e.target.value)}
-              placeholder="Type your response..."
-              className="flex-1 bg-surface-mid border border-border px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none resize-none h-20 font-mono"
-            />
-            <button
-              onClick={handleReply}
-              className="self-end px-4 py-2 bg-primary text-primary-foreground font-mono text-xs hover:bg-primary/80 transition-colors"
-            >
-              <Send className="w-4 h-4" />
-            </button>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
@@ -143,19 +94,36 @@ function TicketDetailView({ ticket, onBack }: { ticket: TicketType; onBack: () =
 export default function CustomerPortal() {
   const navigate = useNavigate();
   const location = useLocation();
-  const [selectedTicket, setSelectedTicket] = useState<TicketType | null>(null);
+  const [selectedTicket, setSelectedTicket] = useState<EscalationRow | null>(null);
+  const [tickets, setTickets] = useState<EscalationRow[]>([]);
+  const [loadingTickets, setLoadingTickets] = useState(true);
   const { user, loading, signOut } = useAuth();
 
   const path = location.pathname;
   const activeTab: Tab = path.includes('/queries') ? 'queries' : 'tickets';
 
-  // Redirect to login if not authenticated
-  if (!loading && !user) {
-    navigate('/customer/login');
-    return null;
-  }
+  useEffect(() => {
+    if (!loading && !user) {
+      navigate('/customer/login');
+    }
+  }, [loading, user, navigate]);
 
-  if (loading) {
+  useEffect(() => {
+    if (!user?.email) return;
+    const fetchTickets = async () => {
+      setLoadingTickets(true);
+      const { data } = await supabase
+        .from('escalations')
+        .select('*')
+        .eq('customer_email', user.email!)
+        .order('created_at', { ascending: false });
+      if (data) setTickets(data as EscalationRow[]);
+      setLoadingTickets(false);
+    };
+    fetchTickets();
+  }, [user?.email]);
+
+  if (loading || (!loading && !user)) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <p className="text-muted-foreground font-mono text-sm">Loading...</p>
@@ -164,12 +132,22 @@ export default function CustomerPortal() {
   }
 
   const customerEmail = user?.email || '';
-  const myTickets: TicketType[] = [];
-  const myQueries: typeof allQueries = [];
 
   const handleLogout = async () => {
     await signOut();
     navigate('/customer/login');
+  };
+
+  const handleRefresh = async () => {
+    if (!user?.email) return;
+    setLoadingTickets(true);
+    const { data } = await supabase
+      .from('escalations')
+      .select('*')
+      .eq('customer_email', user.email!)
+      .order('created_at', { ascending: false });
+    if (data) setTickets(data as EscalationRow[]);
+    setLoadingTickets(false);
   };
 
   const tabs: { key: Tab; label: string; path: string; icon: React.ElementType }[] = [
@@ -182,12 +160,10 @@ export default function CustomerPortal() {
       <Header variant="customer" customerName={customerEmail} onLogout={handleLogout} />
 
       <div className="container mx-auto px-4 py-6">
-        {/* Welcome */}
         <div className="mb-6">
           <h1 className="font-display text-lg text-foreground">Welcome, <span className="text-primary">{customerEmail}</span></h1>
         </div>
 
-        {/* Tabs */}
         <div className="flex gap-1 mb-6 border-b border-border">
           {tabs.map((tab) => (
             <button
@@ -208,7 +184,6 @@ export default function CustomerPortal() {
           ))}
         </div>
 
-        {/* Content */}
         <motion.div
           key={activeTab}
           initial={{ opacity: 0, x: 10 }}
@@ -219,23 +194,59 @@ export default function CustomerPortal() {
             <div>
               <div className="flex items-center justify-between mb-4">
                 <h2 className="font-display text-sm text-muted-foreground">
-                  TICKETS ({myTickets.length})
+                  TICKETS ({tickets.length})
                 </h2>
+                <button
+                  onClick={handleRefresh}
+                  className="flex items-center gap-1.5 px-3 py-1.5 border border-border text-xs font-mono text-muted-foreground hover:text-foreground hover:border-primary transition-all"
+                >
+                  <RefreshCw className={`w-3 h-3 ${loadingTickets ? 'animate-spin' : ''}`} />
+                  REFRESH
+                </button>
               </div>
-              {myTickets.length === 0 ? (
+              {loadingTickets ? (
+                <div className="border border-border bg-card p-8 text-center">
+                  <p className="text-sm text-muted-foreground font-mono">Loading tickets...</p>
+                </div>
+              ) : tickets.length === 0 ? (
                 <div className="border border-border bg-card p-8 text-center">
                   <Ticket className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
                   <p className="text-sm text-muted-foreground">No tickets yet</p>
                 </div>
               ) : (
                 <div className="space-y-3">
-                  {myTickets.map((ticket) => (
-                    <TicketCard
-                      key={ticket.id}
-                      ticket={ticket}
-                      onClick={() => setSelectedTicket(ticket)}
-                    />
-                  ))}
+                  {tickets.map((ticket) => {
+                    const display = statusDisplay[ticket.status] || statusDisplay.pending;
+                    return (
+                      <div
+                        key={ticket.id}
+                        onClick={() => setSelectedTicket(ticket)}
+                        className="border border-border bg-card p-4 hover:border-primary/50 transition-all cursor-pointer group"
+                      >
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="text-[10px] font-mono text-muted-foreground">{ticket.id.slice(0, 8)}</span>
+                          <span className={`text-[10px] px-2 py-0.5 border font-mono uppercase ${display.className}`}>
+                            {display.label}
+                          </span>
+                        </div>
+                        <h3 className="text-sm font-display text-foreground group-hover:text-primary transition-colors truncate mb-1">
+                          {ticket.query}
+                        </h3>
+                        <div className="flex items-center gap-3 text-[10px] text-muted-foreground">
+                          <span className="px-1.5 py-0.5 bg-surface-light border border-border">
+                            {ticket.category || 'General'}
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <Clock className="w-3 h-3" />
+                            {new Date(ticket.created_at).toLocaleDateString('en-IN')}
+                          </span>
+                          {ticket.merchant_answer && (
+                            <span className="text-neon-green font-mono">● HAS RESPONSE</span>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               )}
             </div>
@@ -248,33 +259,12 @@ export default function CustomerPortal() {
           {activeTab === 'queries' && (
             <div>
               <h2 className="font-display text-sm text-muted-foreground mb-4">
-                QUERIES & RESPONSES ({myQueries.length})
+                QUERIES & RESPONSES (0)
               </h2>
-              {myQueries.length === 0 ? (
-                <div className="border border-border bg-card p-8 text-center">
-                  <MessageSquare className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
-                  <p className="text-sm text-muted-foreground">No queries yet</p>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {myQueries.map((q) => (
-                    <div key={q.id} className="border border-border bg-card p-4">
-                      <div className="flex items-center gap-2 mb-2">
-                        <span className="text-[10px] px-1.5 py-0.5 bg-primary/10 border border-primary/30 text-primary font-mono uppercase">
-                          {q.source}
-                        </span>
-                        <span className="text-[10px] text-muted-foreground">
-                          {new Date(q.timestamp).toLocaleString('en-IN')}
-                        </span>
-                      </div>
-                      <p className="text-sm text-foreground mb-2 font-mono">Q: {q.question}</p>
-                      <div className="border-l-2 border-primary/50 pl-3">
-                        <p className="text-sm text-muted-foreground">A: {q.answer}</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
+              <div className="border border-border bg-card p-8 text-center">
+                <MessageSquare className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
+                <p className="text-sm text-muted-foreground">No queries yet</p>
+              </div>
             </div>
           )}
         </motion.div>

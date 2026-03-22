@@ -75,6 +75,7 @@ const ChatBot = forwardRef<ChatBotRef>((_props, ref) => {
     { id: '0', role: 'assistant', content: 'Namaste! 🙏 Welcome to SignalWave support. How can I help you today?' },
   ]);
   const [input, setInput] = useState('');
+  const [lastQuery, setLastQuery] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const { user } = useAuth();
@@ -101,6 +102,7 @@ const ChatBot = forwardRef<ChatBotRef>((_props, ref) => {
     const userMsg: Message = { id: Date.now().toString(), role: 'user', content: text };
     setMessages((prev) => [...prev, userMsg]);
     setIsTyping(true);
+    setLastQuery(text);
 
     try {
       const response = await fetch(CUSTOMER_QUERY_WEBHOOK, {
@@ -124,7 +126,7 @@ const ChatBot = forwardRef<ChatBotRef>((_props, ref) => {
         const followUpMessage = needsLogin
           ? 'Please log in to create a support ticket.'
           : ticketCreated
-            ? 'I created a support ticket for you. Our support team will review it shortly.'
+            ? 'I\'ve created a support ticket for your query. You can track it under "My Tickets" in your dashboard.'
             : 'This needs human support. Please check your tickets page, or try again in a moment if the ticket does not appear.';
 
         setMessages((prev) => [
