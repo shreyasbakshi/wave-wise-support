@@ -75,6 +75,7 @@ const ChatBot = forwardRef<ChatBotRef>((_props, ref) => {
     { id: '0', role: 'assistant', content: 'Namaste! 🙏 Welcome to SignalWave support. How can I help you today?' },
   ]);
   const [input, setInput] = useState('');
+  const [lastQuery, setLastQuery] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const { user } = useAuth();
