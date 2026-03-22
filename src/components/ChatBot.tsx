@@ -18,6 +18,7 @@ interface Message {
   feedbackGiven?: 'up' | 'down' | null;
   feedbackTextOpen?: boolean;
   escalated?: boolean;
+  showCreateTicket?: boolean;
 }
 
 interface CustomerQueryResponse {
@@ -121,24 +122,31 @@ const ChatBot = forwardRef<ChatBotRef>((_props, ref) => {
 
       if (shouldEscalate) {
         const needsLogin = !user;
-        const ticketCreated = needsLogin ? false : await createEscalation(text);
         const baseMessage = answer || 'I couldn\'t find a matching answer in our knowledge base.';
-        const followUpMessage = needsLogin
-          ? 'Please log in to create a support ticket.'
-          : ticketCreated
-            ? 'I\'ve created a support ticket for your query. You can track it under "My Tickets" in your dashboard.'
-            : 'This needs human support. Please check your tickets page, or try again in a moment if the ticket does not appear.';
 
-        setMessages((prev) => [
-          ...prev,
-          {
-            id: (Date.now() + 1).toString(),
-            role: 'assistant',
-            content: `${baseMessage}\n\n${followUpMessage}`,
-            showLoginPrompt: needsLogin,
-            escalated: true,
-          },
-        ]);
+        if (needsLogin) {
+          setMessages((prev) => [
+            ...prev,
+            {
+              id: (Date.now() + 1).toString(),
+              role: 'assistant',
+              content: `${baseMessage}\n\nPlease log in to create a support ticket.`,
+              showLoginPrompt: true,
+              escalated: true,
+            },
+          ]);
+        } else {
+          setMessages((prev) => [
+            ...prev,
+            {
+              id: (Date.now() + 1).toString(),
+              role: 'assistant',
+              content: `${baseMessage}\n\nWould you like me to create a support ticket for this?`,
+              escalated: true,
+              showCreateTicket: true,
+            },
+          ]);
+        }
       } else {
         setMessages((prev) => [
           ...prev,
@@ -217,6 +225,23 @@ const ChatBot = forwardRef<ChatBotRef>((_props, ref) => {
     processMessage(currentInput);
   };
 
+  const handleCreateTicket = async (msgId: string) => {
+    const ticketCreated = await createEscalation(lastQuery);
+    setMessages((prev) =>
+      prev.map((m) =>
+        m.id === msgId
+          ? {
+              ...m,
+              showCreateTicket: false,
+              content: ticketCreated
+                ? `${m.content.split('\n\n')[0]}\n\nTicket created! You can track it under "My Tickets" in your dashboard.`
+                : `${m.content.split('\n\n')[0]}\n\nFailed to create ticket. Please try again.`,
+            }
+          : m
+      )
+    );
+  };
+
   const handleLoginRedirect = () => {
     navigate('/customer/login?redirect=/customer/tickets');
   };
@@ -280,6 +305,16 @@ const ChatBot = forwardRef<ChatBotRef>((_props, ref) => {
                         className="flex items-center gap-1.5 px-3 py-1.5 bg-primary text-primary-foreground text-xs font-mono hover:bg-primary/80 transition-colors rounded-sm"
                       >
                         <LogIn className="w-3 h-3" /> Log in to create ticket
+                      </button>
+                    </div>
+                  )}
+                  {msg.showCreateTicket && (
+                    <div className="ml-8 mt-2">
+                      <button
+                        onClick={() => handleCreateTicket(msg.id)}
+                        className="flex items-center gap-1.5 px-3 py-1.5 bg-primary text-primary-foreground text-xs font-mono hover:bg-primary/80 transition-colors rounded-sm"
+                      >
+                        Create Support Ticket
                       </button>
                     </div>
                   )}
