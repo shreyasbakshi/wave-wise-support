@@ -308,6 +308,16 @@ const ChatBot = forwardRef<ChatBotRef>((_props, ref) => {
                       </button>
                     </div>
                   )}
+                  {msg.showCreateTicket && (
+                    <div className="ml-8 mt-2">
+                      <button
+                        onClick={() => handleCreateTicket(msg.id)}
+                        className="flex items-center gap-1.5 px-3 py-1.5 bg-primary text-primary-foreground text-xs font-mono hover:bg-primary/80 transition-colors rounded-sm"
+                      >
+                        Create Support Ticket
+                      </button>
+                    </div>
+                  )}
                   {msg.showFeedback && (
                     <div className="ml-8 mt-2">
                       {msg.feedbackGiven && !msg.feedbackTextOpen ? (
