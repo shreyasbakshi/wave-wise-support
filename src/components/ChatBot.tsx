@@ -18,6 +18,7 @@ interface Message {
   feedbackGiven?: 'up' | 'down' | null;
   feedbackTextOpen?: boolean;
   escalated?: boolean;
+  showCreateTicket?: boolean;
 }
 
 interface CustomerQueryResponse {
