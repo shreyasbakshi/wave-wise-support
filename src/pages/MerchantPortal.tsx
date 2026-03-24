@@ -121,6 +121,7 @@ function TicketDetailMerchant({
     setSending(true);
     setError('');
     try {
+      // Call n8n webhook (for GPT enhancement if enabled)
       await fetch('https://shrebuck.app.n8n.cloud/webhook/human-response-v3', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -131,8 +132,14 @@ function TicketDetailMerchant({
           use_gpt: useGpt,
         }),
       });
+
+      // Directly update the row in our Supabase project
+      await escalationsClient
+        .from('escalations')
+        .update({ merchant_answer: response, status: 'resolved' })
+        .eq('id', ticket.id);
+
       setSent(true);
-      // Give the webhook a moment to update the DB, then refresh and go back
       setTimeout(() => {
         onResponseSent();
         onBack();
