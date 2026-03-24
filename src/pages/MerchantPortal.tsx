@@ -134,10 +134,12 @@ function TicketDetailMerchant({
       });
 
       // Directly update the row in our Supabase project
-      await escalationsClient
+      const { error: updateError } = await escalationsClient
         .from('escalations')
         .update({ merchant_answer: response, status: 'resolved' })
         .eq('id', ticket.id);
+
+      if (updateError) throw new Error(updateError.message);
 
       setSent(true);
       setTimeout(() => {
