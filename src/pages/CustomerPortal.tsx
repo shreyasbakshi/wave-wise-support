@@ -60,7 +60,7 @@ function TicketDetailView({ ticket, onBack }: { ticket: EscalationRow; onBack: (
 
       <div className="border border-border bg-card p-6">
         <div className="flex items-center gap-2 mb-2">
-          <span className="text-[10px] font-mono text-muted-foreground">{(ticket.id ?? '').slice(0, 8)}</span>
+          <span className="text-[10px] font-mono text-muted-foreground">{String(ticket.id ?? '').slice(0, 8)}</span>
           <span className={`text-[10px] px-2 py-0.5 border font-mono uppercase ${display.className}`}>
             {display.label}
           </span>
@@ -272,7 +272,7 @@ export default function CustomerPortal() {
                         className="border border-border bg-card p-4 hover:border-primary/50 transition-all cursor-pointer group"
                       >
                         <div className="flex items-center gap-2 mb-1">
-                          <span className="text-[10px] font-mono text-muted-foreground">{(ticket.id ?? '').slice(0, 8)}</span>
+                          <span className="text-[10px] font-mono text-muted-foreground">{String(ticket.id ?? '').slice(0, 8)}</span>
                           <span className={`text-[10px] px-2 py-0.5 border font-mono uppercase ${display.className}`}>
                             {display.label}
                           </span>
