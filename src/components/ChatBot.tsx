@@ -27,7 +27,13 @@ interface CustomerQueryResponse {
   session_id?: string;
 }
 
-const SESSION_ID = crypto.randomUUID();
+const SESSION_ID = (() => {
+  const stored = localStorage.getItem('chatbot_session_id');
+  if (stored) return stored;
+  const newId = crypto.randomUUID();
+  localStorage.setItem('chatbot_session_id', newId);
+  return newId;
+})();
 const CUSTOMER_QUERY_WEBHOOK = 'https://shrebuck.app.n8n.cloud/webhook/050ec3eb-3611-4678-8b4a-83111e4c248e';
 
 function parseCustomerQueryResponse(raw: string): CustomerQueryResponse {
