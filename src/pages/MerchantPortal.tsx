@@ -7,7 +7,7 @@ import {
 } from 'lucide-react';
 import Header from '@/components/Header';
 import TicketCard from '@/components/TicketCard';
-import { supabase } from '@/integrations/supabase/client';
+import { escalationsClient } from '@/integrations/supabase/escalationsClient';
 import {
   customers, kbArticles as initialKBArticles,
   ticketCategories, type Ticket as TicketType, type KBArticle
@@ -448,7 +448,7 @@ export default function MerchantPortal() {
 
   const fetchEscalations = useCallback(async () => {
     setLoading(true);
-    const { data, error } = await supabase
+    const { data, error } = await escalationsClient
       .from('escalations')
       .select('*')
       .order('created_at', { ascending: false });
@@ -484,7 +484,7 @@ export default function MerchantPortal() {
     fetchEscalations();
 
     // Real-time subscription for instant updates
-    const channel = supabase
+    const channel = escalationsClient
       .channel('merchant-escalations')
       .on(
         'postgres_changes',
@@ -497,7 +497,7 @@ export default function MerchantPortal() {
     const interval = setInterval(fetchEscalations, 30_000);
 
     return () => {
-      supabase.removeChannel(channel);
+      escalationsClient.removeChannel(channel);
       clearInterval(interval);
     };
   }, [navigate, fetchEscalations]);
