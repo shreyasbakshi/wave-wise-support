@@ -132,6 +132,27 @@ const ChatBot = forwardRef<ChatBotRef>((_props, ref) => {
       const shouldEscalate = Boolean(data.escalate) || !answer;
 
       if (shouldEscalate) {
+        // Check telco_support KB before escalating
+        const { data: kbData } = await escalationsClient
+          .from('telco_support')
+          .select('"Solution to FAQ"')
+          .ilike('"FAQ Raised"', `%${text}%`)
+          .limit(1);
+
+        const kbAnswer = kbData?.[0]?.['Solution to FAQ'];
+
+        if (kbAnswer) {
+          setMessages((prev) => [
+            ...prev,
+            {
+              id: (Date.now() + 1).toString(),
+              role: 'assistant',
+              content: kbAnswer,
+              showFeedback: true,
+              feedbackGiven: null,
+            },
+          ]);
+        } else {
         const needsLogin = !user;
         const baseMessage = answer || 'I couldn\'t find a matching answer in our knowledge base.';
 
@@ -157,6 +178,7 @@ const ChatBot = forwardRef<ChatBotRef>((_props, ref) => {
               showCreateTicket: true,
             },
           ]);
+        }
         }
       } else {
         setMessages((prev) => [
