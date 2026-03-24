@@ -41,7 +41,6 @@ export default function Header({ variant = 'public', customerName, onLogout }: H
   const navLinks = variant === 'customer'
     ? [
         { path: '/customer/tickets', label: 'My Tickets' },
-        { path: '/customer/queries', label: 'My Queries' },
         { path: '/customer/plan', label: 'Service Plan' },
       ]
     : variant === 'merchant'

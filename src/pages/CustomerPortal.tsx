@@ -1,13 +1,32 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Ticket, MessageSquare, Send, Clock, RefreshCw } from 'lucide-react';
+import { Ticket, CreditCard, Clock, RefreshCw } from 'lucide-react';
 import Header from '@/components/Header';
 import ChatBot from '@/components/ChatBot';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 
-type Tab = 'tickets' | 'queries';
+type Tab = 'tickets' | 'plan';
+
+const plansByEmail: Record<string, { name: string; type: string; price: string; data: string; validity: string; features: string[] }> = {
+  'riya@gmail.com': {
+    name: '₹399 Prepaid',
+    type: 'Prepaid',
+    price: '₹399/month',
+    data: '1.5GB/day',
+    validity: '28 days',
+    features: ['Unlimited Calls', '100 SMS/day', 'Free Weekends Data'],
+  },
+  'helping.pm@gmail.com': {
+    name: '₹799 Family Plan',
+    type: 'Family',
+    price: '₹799/month',
+    data: '2GB/day per member',
+    validity: '28 days',
+    features: ['4 SIM Connections', 'Shared Data Pool', 'Unlimited Calls', 'Disney+ Hotstar'],
+  },
+};
 
 interface EscalationRow {
   id: string;
@@ -96,11 +115,18 @@ export default function CustomerPortal() {
   const location = useLocation();
   const [selectedTicket, setSelectedTicket] = useState<EscalationRow | null>(null);
   const [tickets, setTickets] = useState<EscalationRow[]>([]);
+
+  // Keep selected ticket in sync with live updates
+  useEffect(() => {
+    if (!selectedTicket) return;
+    const updated = tickets.find((t) => t.id === selectedTicket.id);
+    if (updated) setSelectedTicket(updated);
+  }, [tickets]); // eslint-disable-line react-hooks/exhaustive-deps
   const [loadingTickets, setLoadingTickets] = useState(true);
   const { user, loading, signOut } = useAuth();
 
   const path = location.pathname;
-  const activeTab: Tab = path.includes('/queries') ? 'queries' : 'tickets';
+  const activeTab: Tab = path.includes('/plan') ? 'plan' : 'tickets';
 
   useEffect(() => {
     if (!loading && !user) {
@@ -110,6 +136,7 @@ export default function CustomerPortal() {
 
   useEffect(() => {
     if (!user?.email) return;
+
     const fetchTickets = async () => {
       setLoadingTickets(true);
       const { data } = await supabase
@@ -120,7 +147,24 @@ export default function CustomerPortal() {
       if (data) setTickets(data as EscalationRow[]);
       setLoadingTickets(false);
     };
+
     fetchTickets();
+
+    const channel = supabase
+      .channel('customer-escalations')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'escalations',
+          filter: `customer_email=eq.${user.email}`,
+        },
+        () => { fetchTickets(); }
+      )
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
   }, [user?.email]);
 
   if (loading || (!loading && !user)) {
@@ -152,7 +196,7 @@ export default function CustomerPortal() {
 
   const tabs: { key: Tab; label: string; path: string; icon: React.ElementType }[] = [
     { key: 'tickets', label: 'My Tickets', path: '/customer/tickets', icon: Ticket },
-    { key: 'queries', label: 'My Queries', path: '/customer/queries', icon: MessageSquare },
+    { key: 'plan', label: 'Service Plan', path: '/customer/plan', icon: CreditCard },
   ];
 
   return (
@@ -256,15 +300,48 @@ export default function CustomerPortal() {
             <TicketDetailView ticket={selectedTicket} onBack={() => setSelectedTicket(null)} />
           )}
 
-          {activeTab === 'queries' && (
+          {activeTab === 'plan' && (
             <div>
-              <h2 className="font-display text-sm text-muted-foreground mb-4">
-                QUERIES & RESPONSES (0)
-              </h2>
-              <div className="border border-border bg-card p-8 text-center">
-                <MessageSquare className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
-                <p className="text-sm text-muted-foreground">No queries yet</p>
-              </div>
+              <h2 className="font-display text-sm text-muted-foreground mb-4">SERVICE PLAN</h2>
+              {plansByEmail[customerEmail] ? (
+                <div className="border border-primary/30 bg-card p-6 space-y-4">
+                  <div className="flex items-center gap-3">
+                    <CreditCard className="w-5 h-5 text-primary" />
+                    <div>
+                      <h3 className="font-display text-base text-foreground">{plansByEmail[customerEmail].name}</h3>
+                      <span className="text-[10px] font-mono px-2 py-0.5 border border-primary/40 text-primary uppercase">
+                        {plansByEmail[customerEmail].type}
+                      </span>
+                    </div>
+                    <span className="ml-auto font-display text-lg text-primary">{plansByEmail[customerEmail].price}</span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3 pt-2 border-t border-border">
+                    <div>
+                      <p className="text-[10px] font-mono text-muted-foreground mb-1">DATA</p>
+                      <p className="text-sm text-foreground">{plansByEmail[customerEmail].data}</p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-mono text-muted-foreground mb-1">VALIDITY</p>
+                      <p className="text-sm text-foreground">{plansByEmail[customerEmail].validity}</p>
+                    </div>
+                  </div>
+                  <div className="pt-2 border-t border-border">
+                    <p className="text-[10px] font-mono text-muted-foreground mb-2">FEATURES</p>
+                    <ul className="space-y-1">
+                      {plansByEmail[customerEmail].features.map((f) => (
+                        <li key={f} className="text-sm text-foreground flex items-center gap-2">
+                          <span className="text-neon-green text-xs">✓</span> {f}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+              ) : (
+                <div className="border border-border bg-card p-8 text-center">
+                  <CreditCard className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
+                  <p className="text-sm text-muted-foreground">No plan details available</p>
+                </div>
+              )}
             </div>
           )}
         </motion.div>

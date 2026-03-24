@@ -3,56 +3,69 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
   LayoutDashboard, Ticket, BookOpen, Send, CheckCircle, AlertTriangle,
-  Clock, Eye, Plus, Save, SpellCheck, Wand2, FileText, RefreshCw
+  Clock, Eye, Plus, SpellCheck, Wand2, FileText, RefreshCw
 } from 'lucide-react';
 import Header from '@/components/Header';
 import TicketCard from '@/components/TicketCard';
-import { supabase } from '@/integrations/supabase/client';
+import { merchantSupabase, type EscalationRow } from '@/integrations/supabase/merchantClient';
 import {
   customers, kbArticles as initialKBArticles,
   ticketCategories, type Ticket as TicketType, type KBArticle
 } from '@/data/mockData';
 
 type Tab = 'dashboard' | 'tickets' | 'knowledge-base';
+type StatusFilter = 'all' | 'open' | 'resolved' | 'closed' | 'old';
 
-function DashboardView({ tickets }: { tickets: TicketType[] }) {
+const isOlderThan24h = (createdAt: string) =>
+  (Date.now() - new Date(createdAt).getTime()) > 24 * 60 * 60 * 1000;
+
+function DashboardView({
+  tickets,
+  onFilterNav,
+}: {
+  tickets: TicketType[];
+  onFilterNav: (status: StatusFilter) => void;
+}) {
   const open = tickets.filter((t) => t.status === 'open').length;
-  const pending = tickets.filter((t) => t.status === 'pending').length;
   const resolved = tickets.filter((t) => t.status === 'resolved').length;
   const closed = tickets.filter((t) => t.status === 'closed').length;
-  const oldOpen = tickets.filter((t) => {
-    if (t.status !== 'open') return false;
-    return (Date.now() - new Date(t.createdAt).getTime()) > 24 * 60 * 60 * 1000;
-  }).length;
+  const oldOpen = tickets.filter((t) => t.status === 'open' && isOlderThan24h(t.createdAt)).length;
 
-  const stats = [
-    { label: 'OPEN', value: open, icon: AlertTriangle, color: 'text-neon-orange border-neon-orange/30 bg-neon-orange/10' },
-    { label: 'PENDING', value: pending, icon: Clock, color: 'text-neon-yellow border-neon-yellow/30 bg-neon-yellow/10' },
-    { label: 'RESOLVED', value: resolved, icon: CheckCircle, color: 'text-neon-green border-neon-green/30 bg-neon-green/10' },
-    { label: 'CLOSED', value: closed, icon: Eye, color: 'text-muted-foreground border-border bg-muted/30' },
+  const stats: { label: string; value: number; icon: React.ElementType; color: string; filter: StatusFilter }[] = [
+    { label: 'OPEN', value: open, icon: AlertTriangle, color: 'text-neon-orange border-neon-orange/30 bg-neon-orange/10 hover:bg-neon-orange/20', filter: 'open' },
+    { label: 'RESOLVED', value: resolved, icon: CheckCircle, color: 'text-neon-green border-neon-green/30 bg-neon-green/10 hover:bg-neon-green/20', filter: 'resolved' },
+    { label: 'CLOSED', value: closed, icon: Eye, color: 'text-muted-foreground border-border bg-muted/30 hover:bg-muted/50', filter: 'closed' },
+    { label: 'ALL', value: tickets.length, icon: Ticket, color: 'text-primary border-primary/30 bg-primary/10 hover:bg-primary/20', filter: 'all' },
   ];
 
   return (
     <div>
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
         {stats.map((stat) => (
-          <div key={stat.label} className={`border p-4 ${stat.color}`}>
+          <button
+            key={stat.label}
+            onClick={() => onFilterNav(stat.filter)}
+            className={`border p-4 text-left transition-colors cursor-pointer ${stat.color}`}
+          >
             <stat.icon className="w-5 h-5 mb-2" />
             <p className="text-2xl font-display">{stat.value}</p>
-            <p className="text-[10px] font-mono">{stat.label}</p>
-          </div>
+            <p className="text-[10px] font-mono">{stat.label} TICKETS →</p>
+          </button>
         ))}
       </div>
 
       {/* 24hr alert */}
       {oldOpen > 0 && (
-        <div className="mb-6 border border-destructive/50 bg-destructive/10 p-4 flex items-center gap-3">
+        <button
+          onClick={() => onFilterNav('old')}
+          className="w-full mb-6 border border-destructive/50 bg-destructive/10 hover:bg-destructive/20 p-4 flex items-center gap-3 text-left transition-colors"
+        >
           <AlertTriangle className="w-5 h-5 text-destructive flex-shrink-0" />
           <div>
-            <p className="text-sm font-display text-destructive">{oldOpen} TICKET(S) OPEN {'>'} 24 HOURS</p>
+            <p className="text-sm font-display text-destructive">{oldOpen} TICKET(S) OPEN {'>'} 24 HOURS → VIEW ALL</p>
             <p className="text-xs text-muted-foreground">These tickets require immediate attention</p>
           </div>
-        </div>
+        </button>
       )}
 
       {/* KB stats */}
@@ -74,14 +87,22 @@ function DashboardView({ tickets }: { tickets: TicketType[] }) {
       <h3 className="font-display text-sm text-muted-foreground mb-3">RECENT TICKETS</h3>
       <div className="space-y-2">
         {tickets.slice(0, 3).map((t) => (
-          <TicketCard key={t.id} ticket={t} showCustomer />
+          <TicketCard key={t.id} ticket={t} showCustomer onClick={() => onFilterNav('all')} />
         ))}
       </div>
     </div>
   );
 }
 
-function TicketDetailMerchant({ ticket, onBack }: { ticket: TicketType; onBack: () => void }) {
+function TicketDetailMerchant({
+  ticket,
+  onBack,
+  onResponseSent,
+}: {
+  ticket: TicketType;
+  onBack: () => void;
+  onResponseSent: () => void;
+}) {
   const [response, setResponse] = useState('');
   const [spellChecked, setSpellChecked] = useState(false);
   const [sending, setSending] = useState(false);
@@ -111,6 +132,11 @@ function TicketDetailMerchant({ ticket, onBack }: { ticket: TicketType; onBack: 
         }),
       });
       setSent(true);
+      // Give the webhook a moment to update the DB, then refresh and go back
+      setTimeout(() => {
+        onResponseSent();
+        onBack();
+      }, 1500);
     } catch (err) {
       setError('Failed to send response. Please try again.');
     } finally {
@@ -410,6 +436,7 @@ export default function MerchantPortal() {
   const location = useLocation();
   const [selectedTicket, setSelectedTicket] = useState<TicketType | null>(null);
   const [filterCategory, setFilterCategory] = useState('all');
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [tickets, setTickets] = useState<TicketType[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -421,22 +448,27 @@ export default function MerchantPortal() {
 
   const fetchEscalations = useCallback(async () => {
     setLoading(true);
-    const { data, error } = await supabase
+    const { data, error } = await merchantSupabase
       .from('escalations')
-      .select('*')
+      .select('id, session_id, query, enhanced_query, human_answer, final_answer, status, created_at')
       .order('created_at', { ascending: false });
 
     if (data && !error) {
-      const mapped: TicketType[] = data.map((row: any) => ({
+      const mapped: TicketType[] = (data as EscalationRow[]).map((row) => ({
         id: row.id,
         customerId: '',
-        subject: row.query,
+        subject: row.enhanced_query || row.query,
         description: row.query,
-        status: row.status === 'pending' ? 'open' as const : row.status === 'resolved' ? 'resolved' as const : 'closed' as const,
-        category: row.category || 'General',
+        status: row.status === 'pending' ? 'open' as const :
+                row.status === 'resolved' ? 'resolved' as const : 'closed' as const,
+        category: 'General',
         createdAt: row.created_at,
-        updatedAt: row.updated_at,
-        responses: row.merchant_answer ? [{ id: '1', from: 'merchant' as const, message: row.merchant_answer, timestamp: row.updated_at }] : [],
+        updatedAt: row.created_at,
+        responses: row.human_answer
+          ? [{ id: '1', from: 'merchant' as const, message: row.human_answer, timestamp: row.created_at }]
+          : row.final_answer
+          ? [{ id: '1', from: 'system' as const, message: row.final_answer, timestamp: row.created_at }]
+          : [],
         session_id: row.session_id,
         query: row.query,
         customerRating: null,
@@ -452,6 +484,24 @@ export default function MerchantPortal() {
       return;
     }
     fetchEscalations();
+
+    // Real-time subscription for instant updates
+    const channel = merchantSupabase
+      .channel('merchant-escalations')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'escalations' },
+        () => { fetchEscalations(); }
+      )
+      .subscribe();
+
+    // 30-second polling fallback
+    const interval = setInterval(fetchEscalations, 30_000);
+
+    return () => {
+      merchantSupabase.removeChannel(channel);
+      clearInterval(interval);
+    };
   }, [navigate, fetchEscalations]);
 
   const handleLogout = () => {
@@ -460,9 +510,20 @@ export default function MerchantPortal() {
     navigate('/merchant/login');
   };
 
-  const filteredTickets = filterCategory === 'all'
-    ? tickets
-    : tickets.filter((t) => t.category === filterCategory);
+  const handleFilterNav = (status: StatusFilter) => {
+    setStatusFilter(status);
+    setSelectedTicket(null);
+    navigate('/merchant/tickets');
+  };
+
+  const filteredTickets = tickets.filter((t) => {
+    const categoryMatch = filterCategory === 'all' || t.category === filterCategory;
+    const statusMatch =
+      statusFilter === 'all' ? true :
+      statusFilter === 'old' ? (t.status === 'open' && isOlderThan24h(t.createdAt)) :
+      t.status === statusFilter;
+    return categoryMatch && statusMatch;
+  });
 
   const tabs: { key: Tab; label: string; path: string; icon: React.ElementType }[] = [
     { key: 'dashboard', label: 'Dashboard', path: '/merchant/dashboard', icon: LayoutDashboard },
@@ -502,40 +563,98 @@ export default function MerchantPortal() {
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.2 }}
         >
-          {activeTab === 'dashboard' && <DashboardView tickets={tickets} />}
+          {activeTab === 'dashboard' && (
+            <DashboardView tickets={tickets} onFilterNav={handleFilterNav} />
+          )}
 
           {activeTab === 'tickets' && !selectedTicket && (
             <div>
-              <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center justify-between mb-3">
                 <h2 className="font-display text-sm text-muted-foreground">
-                  ALL TICKETS ({filteredTickets.length})
+                  {statusFilter === 'all' ? 'ALL' :
+                   statusFilter === 'old' ? 'OPEN > 24 HRS' :
+                   statusFilter.toUpperCase()} TICKETS ({filteredTickets.length})
                 </h2>
-                <select
-                  value={filterCategory}
-                  onChange={(e) => setFilterCategory(e.target.value)}
-                  className="bg-surface-dark border border-border px-3 py-1.5 text-xs text-foreground font-mono focus:border-secondary focus:outline-none"
-                >
-                  <option value="all">All Categories</option>
-                  {ticketCategories.map((cat) => (
-                    <option key={cat} value={cat}>{cat}</option>
-                  ))}
-                </select>
+                <div className="flex items-center gap-2">
+                  {statusFilter !== 'all' && (
+                    <button
+                      onClick={() => setStatusFilter('all')}
+                      className="text-[10px] font-mono px-2 py-1 border border-destructive/50 text-destructive hover:bg-destructive/10 transition-colors"
+                    >
+                      ✕ CLEAR FILTER
+                    </button>
+                  )}
+                  <select
+                    value={filterCategory}
+                    onChange={(e) => setFilterCategory(e.target.value)}
+                    className="bg-surface-dark border border-border px-3 py-1.5 text-xs text-foreground font-mono focus:border-secondary focus:outline-none"
+                  >
+                    <option value="all">All Categories</option>
+                    {ticketCategories.map((cat) => (
+                      <option key={cat} value={cat}>{cat}</option>
+                    ))}
+                  </select>
+                  <button
+                    onClick={fetchEscalations}
+                    className="flex items-center gap-1 px-3 py-1.5 border border-border text-xs font-mono text-muted-foreground hover:text-foreground hover:border-secondary transition-all"
+                  >
+                    <RefreshCw className={`w-3 h-3 ${loading ? 'animate-spin' : ''}`} />
+                    REFRESH
+                  </button>
+                </div>
               </div>
-              <div className="space-y-3">
-                {filteredTickets.map((ticket) => (
-                  <TicketCard
-                    key={ticket.id}
-                    ticket={ticket}
-                    showCustomer
-                    onClick={() => setSelectedTicket(ticket)}
-                  />
+
+              {/* Active status filter pills */}
+              <div className="flex gap-2 mb-4 flex-wrap">
+                {(['all', 'open', 'resolved', 'closed', 'old'] as StatusFilter[]).map((s) => (
+                  <button
+                    key={s}
+                    onClick={() => setStatusFilter(s)}
+                    className={`text-[10px] font-mono px-2.5 py-1 border transition-colors ${
+                      statusFilter === s
+                        ? s === 'open' ? 'border-neon-orange bg-neon-orange/20 text-neon-orange' :
+                          s === 'resolved' ? 'border-neon-green bg-neon-green/20 text-neon-green' :
+                          s === 'closed' ? 'border-muted-foreground bg-muted/40 text-muted-foreground' :
+                          s === 'old' ? 'border-destructive bg-destructive/20 text-destructive' :
+                          'border-primary bg-primary/20 text-primary'
+                        : 'border-border text-muted-foreground hover:text-foreground'
+                    }`}
+                  >
+                    {s === 'old' ? '> 24 HRS' : s.toUpperCase()}
+                  </button>
                 ))}
               </div>
+
+              {loading ? (
+                <div className="border border-border bg-card p-8 text-center">
+                  <p className="text-sm text-muted-foreground font-mono">Loading tickets...</p>
+                </div>
+              ) : filteredTickets.length === 0 ? (
+                <div className="border border-border bg-card p-8 text-center">
+                  <Ticket className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
+                  <p className="text-sm text-muted-foreground">No tickets match this filter</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {filteredTickets.map((ticket) => (
+                    <TicketCard
+                      key={ticket.id}
+                      ticket={ticket}
+                      showCustomer
+                      onClick={() => setSelectedTicket(ticket)}
+                    />
+                  ))}
+                </div>
+              )}
             </div>
           )}
 
           {activeTab === 'tickets' && selectedTicket && (
-            <TicketDetailMerchant ticket={selectedTicket} onBack={() => setSelectedTicket(null)} />
+            <TicketDetailMerchant
+              ticket={selectedTicket}
+              onBack={() => setSelectedTicket(null)}
+              onResponseSent={fetchEscalations}
+            />
           )}
 
           {activeTab === 'knowledge-base' && <KnowledgeBaseView />}

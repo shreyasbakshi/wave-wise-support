@@ -86,6 +86,16 @@ const ChatBot = forwardRef<ChatBotRef>((_props, ref) => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isTyping]);
 
+  useEffect(() => {
+    const pendingQuery = sessionStorage.getItem('chatbot_pending_query');
+    if (pendingQuery && user) {
+      sessionStorage.removeItem('chatbot_pending_query');
+      setIsOpen(true);
+      setTimeout(() => processMessage(pendingQuery), 100);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user]);
+
   const createEscalation = async (query: string) => {
     if (!user?.email) return false;
 
@@ -243,6 +253,7 @@ const ChatBot = forwardRef<ChatBotRef>((_props, ref) => {
   };
 
   const handleLoginRedirect = () => {
+    if (lastQuery) sessionStorage.setItem('chatbot_pending_query', lastQuery);
     navigate('/customer/login?redirect=/customer/tickets');
   };
 
