@@ -6,6 +6,7 @@ import Header from '@/components/Header';
 import ChatBot from '@/components/ChatBot';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
+import { escalationsClient } from '@/integrations/supabase/escalationsClient';
 
 type Tab = 'tickets' | 'plan';
 
@@ -142,7 +143,7 @@ export default function CustomerPortal() {
 
     const fetchTickets = async () => {
       setLoadingTickets(true);
-      const { data } = await supabase
+      const { data } = await escalationsClient
         .from('escalations')
         .select('*')
         .eq('customer_email', user.email!)
@@ -153,7 +154,7 @@ export default function CustomerPortal() {
 
     fetchTickets();
 
-    const channel = supabase
+    const channel = escalationsClient
       .channel('customer-escalations')
       .on(
         'postgres_changes',
@@ -167,7 +168,7 @@ export default function CustomerPortal() {
       )
       .subscribe();
 
-    return () => { supabase.removeChannel(channel); };
+    return () => { escalationsClient.removeChannel(channel); };
   }, [user?.email]);
 
   if (loading || (!loading && !user)) {
@@ -188,7 +189,7 @@ export default function CustomerPortal() {
   const handleRefresh = async () => {
     if (!user?.email) return;
     setLoadingTickets(true);
-    const { data } = await supabase
+    const { data } = await escalationsClient
       .from('escalations')
       .select('*')
       .eq('customer_email', user.email!)

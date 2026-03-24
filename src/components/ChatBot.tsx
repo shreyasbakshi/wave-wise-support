@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MessageCircle, X, Send, Bot, User, LogIn, ThumbsUp, ThumbsDown } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import { escalationsClient } from '@/integrations/supabase/escalationsClient';
 import { useAuth } from '@/contexts/AuthContext';
 
 export interface ChatBotRef {
@@ -99,7 +100,7 @@ const ChatBot = forwardRef<ChatBotRef>((_props, ref) => {
   const createEscalation = async (query: string) => {
     if (!user?.email) return false;
 
-    const { error } = await supabase.from('escalations').insert({
+    const { error } = await escalationsClient.from('escalations').insert({
       session_id: SESSION_ID,
       query,
       customer_email: user.email,
