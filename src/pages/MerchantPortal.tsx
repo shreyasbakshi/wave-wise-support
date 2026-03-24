@@ -7,7 +7,7 @@ import {
 } from 'lucide-react';
 import Header from '@/components/Header';
 import TicketCard from '@/components/TicketCard';
-import { supabase } from '@/integrations/supabase/client';
+import { merchantSupabase, type EscalationRow } from '@/integrations/supabase/merchantClient';
 import {
   customers, kbArticles as initialKBArticles,
   ticketCategories, type Ticket as TicketType, type KBArticle
@@ -448,24 +448,26 @@ export default function MerchantPortal() {
 
   const fetchEscalations = useCallback(async () => {
     setLoading(true);
-    const { data, error } = await supabase
+    const { data, error } = await merchantSupabase
       .from('escalations')
-      .select('*')
+      .select('id, session_id, query, enhanced_query, human_answer, final_answer, status, created_at')
       .order('created_at', { ascending: false });
 
     if (data && !error) {
-      const mapped: TicketType[] = data.map((row: any) => ({
+      const mapped: TicketType[] = (data as EscalationRow[]).map((row) => ({
         id: row.id,
         customerId: '',
-        subject: row.query,
+        subject: row.enhanced_query || row.query,
         description: row.query,
         status: row.status === 'pending' ? 'open' as const :
                 row.status === 'resolved' ? 'resolved' as const : 'closed' as const,
-        category: row.category || 'General',
+        category: 'General',
         createdAt: row.created_at,
-        updatedAt: row.updated_at,
-        responses: row.merchant_answer
-          ? [{ id: '1', from: 'merchant' as const, message: row.merchant_answer, timestamp: row.updated_at }]
+        updatedAt: row.created_at,
+        responses: row.human_answer
+          ? [{ id: '1', from: 'merchant' as const, message: row.human_answer, timestamp: row.created_at }]
+          : row.final_answer
+          ? [{ id: '1', from: 'system' as const, message: row.final_answer, timestamp: row.created_at }]
           : [],
         session_id: row.session_id,
         query: row.query,
@@ -484,7 +486,7 @@ export default function MerchantPortal() {
     fetchEscalations();
 
     // Real-time subscription for instant updates
-    const channel = supabase
+    const channel = merchantSupabase
       .channel('merchant-escalations')
       .on(
         'postgres_changes',
@@ -497,7 +499,7 @@ export default function MerchantPortal() {
     const interval = setInterval(fetchEscalations, 30_000);
 
     return () => {
-      supabase.removeChannel(channel);
+      merchantSupabase.removeChannel(channel);
       clearInterval(interval);
     };
   }, [navigate, fetchEscalations]);
