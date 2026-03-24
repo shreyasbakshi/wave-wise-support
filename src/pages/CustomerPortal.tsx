@@ -37,6 +37,7 @@ interface EscalationRow {
   category: string | null;
   status: string;
   merchant_answer: string | null;
+  final_answer: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -87,7 +88,7 @@ function TicketDetailView({ ticket, onBack }: { ticket: EscalationRow; onBack: (
         </div>
 
         {/* Merchant response */}
-        {ticket.merchant_answer && (
+        {(ticket.status === 'resolved' ? ticket.final_answer : ticket.merchant_answer) && (
           <div className="border border-secondary/30 bg-secondary/5 mr-8 p-4">
             <div className="flex items-center gap-2 mb-2">
               <span className="text-[10px] font-mono uppercase text-secondary">&gt; SUPPORT AGENT</span>
@@ -95,11 +96,13 @@ function TicketDetailView({ ticket, onBack }: { ticket: EscalationRow; onBack: (
                 {new Date(ticket.updated_at).toLocaleString('en-IN')}
               </span>
             </div>
-            <p className="text-sm text-foreground">{ticket.merchant_answer}</p>
+            <p className="text-sm text-foreground">
+              {ticket.status === 'resolved' ? ticket.final_answer : ticket.merchant_answer}
+            </p>
           </div>
         )}
 
-        {!ticket.merchant_answer && ticket.status === 'pending' && (
+        {!(ticket.status === 'resolved' ? ticket.final_answer : ticket.merchant_answer) && ticket.status === 'pending' && (
           <div className="border border-border bg-surface-mid p-4 text-center">
             <Clock className="w-5 h-5 text-muted-foreground mx-auto mb-1" />
             <p className="text-xs text-muted-foreground font-mono">Awaiting merchant response...</p>
@@ -284,7 +287,7 @@ export default function CustomerPortal() {
                             <Clock className="w-3 h-3" />
                             {new Date(ticket.created_at).toLocaleDateString('en-IN')}
                           </span>
-                          {ticket.merchant_answer && (
+                          {(ticket.status === 'resolved' ? ticket.final_answer : ticket.merchant_answer) && (
                             <span className="text-neon-green font-mono">● HAS RESPONSE</span>
                           )}
                         </div>
