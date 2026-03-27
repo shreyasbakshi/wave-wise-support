@@ -283,6 +283,14 @@ function TicketDetailMerchant({
   );
 }
 
+interface GeneratedArticle {
+  nature_of_service: string;
+  service_category: string;
+  faq_raised: string;
+  solution_to_faq: string;
+  content: string;
+}
+
 function KnowledgeBaseView() {
   const [articles, setArticles] = useState<KBArticle[]>(initialKBArticles);
   const [showCreate, setShowCreate] = useState(false);
@@ -290,33 +298,76 @@ function KnowledgeBaseView() {
   const [newCategory, setNewCategory] = useState('Network');
   const [newContent, setNewContent] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
-  const [generated, setGenerated] = useState(false);
+  const [isPublishing, setIsPublishing] = useState(false);
+  const [generatedArticle, setGeneratedArticle] = useState<GeneratedArticle | null>(null);
+  const [publishSuccess, setPublishSuccess] = useState(false);
+  const [generateError, setGenerateError] = useState<string | null>(null);
+  const [publishError, setPublishError] = useState<string | null>(null);
 
-  const handleGenerate = () => {
+  const handleGenerate = async () => {
     setIsGenerating(true);
-    setTimeout(() => {
-      setNewContent(`## ${newTitle || 'Untitled Article'}\n\n### Overview\nThis article addresses common issues related to ${newCategory.toLowerCase()} services.\n\n### Steps to Resolve\n1. **Verify your account status** - Check if your plan is active\n2. **Restart your device** - Power cycle for 30 seconds\n3. **Check service status** - Visit status.signalwave.in\n4. **Clear cache** - Go to Settings → Apps → SignalWave → Clear Cache\n5. **Contact support** - If issue persists, call 1800-SIGNAL-0\n\n### Additional Notes\n- This issue typically resolves within 2-4 hours\n- Network maintenance windows: Tue/Thu 2AM-4AM IST\n- For enterprise customers, contact your dedicated account manager`);
+    setGenerateError(null);
+    setGeneratedArticle(null);
+    try {
+      const body: Record<string, string> = {
+        article_name: newTitle,
+        category: newCategory,
+      };
+      if (newContent.trim()) body.merchant_draft = newContent;
+
+      const res = await fetch('https://shrebuck.app.n8n.cloud/webhook/generate-article', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      if (!res.ok) throw new Error(`Server returned ${res.status}`);
+      const data = await res.json();
+      setGeneratedArticle(data);
+      setNewContent(data.faq_raised && data.solution_to_faq
+        ? `**FAQ:** ${data.faq_raised}\n\n**Solution:** ${data.solution_to_faq}`
+        : data.content ?? '');
+    } catch (err) {
+      setGenerateError(err instanceof Error ? err.message : 'Generation failed');
+    } finally {
       setIsGenerating(false);
-      setGenerated(true);
-    }, 2000);
+    }
   };
 
-  const handlePublish = () => {
-    if (!newTitle.trim() || !newContent.trim()) return;
-    const newArticle: KBArticle = {
-      id: `KB${(articles.length + 1).toString().padStart(3, '0')}`,
-      title: newTitle,
-      category: newCategory,
-      content: newContent,
-      createdAt: new Date().toISOString().split('T')[0],
-      createdBy: 'Arjun Kapoor',
-      status: 'published',
-    };
-    setArticles((prev) => [newArticle, ...prev]);
-    setShowCreate(false);
-    setNewTitle('');
-    setNewContent('');
-    setGenerated(false);
+  const handlePublish = async () => {
+    if (!newTitle.trim() || !newContent.trim() || !generatedArticle) return;
+    setIsPublishing(true);
+    setPublishError(null);
+    setPublishSuccess(false);
+    try {
+      const res = await fetch('https://shrebuck.app.n8n.cloud/webhook/approve-article', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(generatedArticle),
+      });
+      if (!res.ok) throw new Error(`Server returned ${res.status}`);
+      setPublishSuccess(true);
+      const newArticle: KBArticle = {
+        id: `KB${(articles.length + 1).toString().padStart(3, '0')}`,
+        title: newTitle,
+        category: newCategory,
+        content: newContent,
+        createdAt: new Date().toISOString().split('T')[0],
+        createdBy: 'Arjun Kapoor',
+        status: 'published',
+      };
+      setArticles((prev) => [newArticle, ...prev]);
+      setTimeout(() => {
+        setShowCreate(false);
+        setNewTitle('');
+        setNewContent('');
+        setGeneratedArticle(null);
+        setPublishSuccess(false);
+      }, 2000);
+    } catch (err) {
+      setPublishError(err instanceof Error ? err.message : 'Publish failed');
+    } finally {
+      setIsPublishing(false);
+    }
   };
 
   return (
@@ -383,32 +434,44 @@ function KnowledgeBaseView() {
                 value={newContent}
                 onChange={(e) => {
                   setNewContent(e.target.value);
-                  setGenerated(false);
+                  setGeneratedArticle(null);
                 }}
                 placeholder="Article content in markdown..."
                 className="w-full bg-surface-mid border border-border px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-secondary focus:outline-none resize-none h-40 font-mono"
               />
-              {generated && (
+              {generatedArticle && (
                 <p className="text-[10px] text-neon-green font-mono mt-1">
                   ✓ Content generated by LLM. You can edit before publishing.
                 </p>
               )}
+              {generateError && (
+                <p className="text-[10px] text-red-400 font-mono mt-1">✗ {generateError}</p>
+              )}
             </div>
 
-            <div className="flex gap-2">
-              <button
-                onClick={handlePublish}
-                className="flex items-center gap-1.5 px-4 py-2 bg-secondary text-secondary-foreground text-xs font-mono hover:bg-secondary/80 transition-colors"
-              >
-                <FileText className="w-3.5 h-3.5" />
-                PUBLISH ARTICLE
-              </button>
-              <button
-                onClick={() => setShowCreate(false)}
-                className="px-4 py-2 border border-border text-xs font-mono text-muted-foreground hover:text-foreground transition-colors"
-              >
-                CANCEL
-              </button>
+            <div className="flex flex-col gap-2">
+              <div className="flex gap-2">
+                <button
+                  onClick={handlePublish}
+                  disabled={isPublishing || !generatedArticle}
+                  className="flex items-center gap-1.5 px-4 py-2 bg-secondary text-secondary-foreground text-xs font-mono hover:bg-secondary/80 transition-colors disabled:opacity-50"
+                >
+                  <FileText className="w-3.5 h-3.5" />
+                  {isPublishing ? 'PUBLISHING...' : 'PUBLISH ARTICLE'}
+                </button>
+                <button
+                  onClick={() => setShowCreate(false)}
+                  className="px-4 py-2 border border-border text-xs font-mono text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  CANCEL
+                </button>
+              </div>
+              {publishSuccess && (
+                <p className="text-[10px] text-neon-green font-mono">✓ Article saved to knowledge base</p>
+              )}
+              {publishError && (
+                <p className="text-[10px] text-red-400 font-mono">✗ {publishError}</p>
+              )}
             </div>
           </div>
         </motion.div>
