@@ -297,6 +297,7 @@ function KnowledgeBaseView() {
   const [newTitle, setNewTitle] = useState('');
   const [newCategory, setNewCategory] = useState('Network');
   const [newContent, setNewContent] = useState('');
+  const [merchantDraft, setMerchantDraft] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [isPublishing, setIsPublishing] = useState(false);
   const [generatedArticle, setGeneratedArticle] = useState<GeneratedArticle | null>(null);
@@ -313,7 +314,7 @@ function KnowledgeBaseView() {
         article_name: newTitle,
         category: newCategory,
       };
-      if (newContent.trim()) body.merchant_draft = newContent;
+      if (merchantDraft.trim()) body.merchant_draft = merchantDraft;
 
       const res = await fetch('https://shrebuck.app.n8n.cloud/webhook/generate-article', {
         method: 'POST',
@@ -360,6 +361,7 @@ function KnowledgeBaseView() {
         setShowCreate(false);
         setNewTitle('');
         setNewContent('');
+        setMerchantDraft('');
         setGeneratedArticle(null);
         setPublishSuccess(false);
       }, 2000);
@@ -416,6 +418,16 @@ function KnowledgeBaseView() {
                   <option key={cat} value={cat}>{cat}</option>
                 ))}
               </select>
+            </div>
+
+            <div>
+              <label className="text-[10px] font-mono text-muted-foreground block mb-1">DRAFT CONTENT (OPTIONAL)</label>
+              <textarea
+                value={merchantDraft}
+                onChange={(e) => setMerchantDraft(e.target.value)}
+                placeholder="Paste any existing draft or notes for the AI to use..."
+                className="w-full bg-surface-mid border border-border px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-secondary focus:outline-none resize-none h-24 font-mono"
+              />
             </div>
 
             <div>
