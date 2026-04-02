@@ -3,8 +3,9 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
   LayoutDashboard, Ticket, BookOpen, Send, CheckCircle, AlertTriangle,
-  Clock, Eye, Plus, SpellCheck, Wand2, FileText, RefreshCw
+  Clock, Eye, Plus, SpellCheck, Wand2, FileText, RefreshCw, ChevronDown
 } from 'lucide-react';
+import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '@/components/ui/collapsible';
 import Header from '@/components/Header';
 import TicketCard from '@/components/TicketCard';
 import { escalationsClient } from '@/integrations/supabase/escalationsClient';
@@ -491,25 +492,44 @@ function KnowledgeBaseView() {
 
       {/* Articles list */}
       <div className="space-y-3">
-        {articles.map((article) => (
-          <div key={article.id} className="border border-border bg-card p-4 hover:border-secondary/30 transition-all">
-            <div className="flex items-center gap-2 mb-2">
-              <span className="text-[10px] font-mono text-muted-foreground">{article.id}</span>
-              <span className="text-[10px] px-1.5 py-0.5 bg-surface-light border border-border">{article.category}</span>
-              <span className={`text-[10px] px-1.5 py-0.5 border font-mono ${
-                article.status === 'published'
-                  ? 'border-neon-green/50 text-neon-green'
-                  : 'border-neon-yellow/50 text-neon-yellow'
-              }`}>
-                {article.status.toUpperCase()}
-              </span>
-            </div>
-            <h3 className="text-sm font-display text-foreground mb-1">{article.title}</h3>
-            <p className="text-[10px] text-muted-foreground">
-              Created by {article.createdBy} on {article.createdAt}
-            </p>
+        {articles.length === 0 ? (
+          <div className="border border-border bg-card p-8 text-center">
+            <BookOpen className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
+            <p className="text-sm text-muted-foreground">No articles yet. Create your first KB article above.</p>
           </div>
-        ))}
+        ) : (
+          articles.map((article) => (
+            <Collapsible key={article.id}>
+              <CollapsibleTrigger className="w-full text-left">
+                <div className="border border-border bg-card p-4 hover:border-secondary/30 transition-all cursor-pointer">
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="text-[10px] font-mono text-muted-foreground">{article.id}</span>
+                    <span className="text-[10px] px-1.5 py-0.5 bg-surface-light border border-border">{article.category}</span>
+                    <span className={`text-[10px] px-1.5 py-0.5 border font-mono ${
+                      article.status === 'published'
+                        ? 'border-neon-green/50 text-neon-green'
+                        : 'border-neon-yellow/50 text-neon-yellow'
+                    }`}>
+                      {article.status.toUpperCase()}
+                    </span>
+                    <ChevronDown className="w-3.5 h-3.5 text-muted-foreground ml-auto transition-transform [[data-state=open]>&]:rotate-180" />
+                  </div>
+                  <h3 className="text-sm font-display text-foreground mb-1">{article.title}</h3>
+                  <p className="text-[10px] text-muted-foreground">
+                    Created by {article.createdBy} on {article.createdAt}
+                  </p>
+                </div>
+              </CollapsibleTrigger>
+              <CollapsibleContent>
+                <div className="border border-t-0 border-secondary/30 bg-surface-dark p-4">
+                  <div className="text-sm text-foreground whitespace-pre-wrap font-mono leading-relaxed">
+                    {article.content}
+                  </div>
+                </div>
+              </CollapsibleContent>
+            </Collapsible>
+          ))
+        )}
       </div>
     </div>
   );

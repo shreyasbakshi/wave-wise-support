@@ -298,35 +298,7 @@ export const queries: Query[] = [
   },
 ];
 
-export const kbArticles: KBArticle[] = [
-  {
-    id: 'KB001',
-    title: 'How to Troubleshoot Slow Internet Speed',
-    category: 'Network',
-    content: '## Steps to Fix Slow Speed\n\n1. **Restart your router** - Unplug for 30 seconds\n2. **Check connected devices** - Too many devices can slow down\n3. **Run a speed test** - Use speedtest.net\n4. **Check for outages** - Visit status.signalwave.in\n5. **Contact support** if issue persists',
-    createdAt: '2024-02-15',
-    createdBy: 'Arjun Kapoor',
-    status: 'published',
-  },
-  {
-    id: 'KB002',
-    title: 'International Roaming Activation Guide',
-    category: 'Roaming',
-    content: '## Activate International Roaming\n\n1. Dial *123*1# or use the app\n2. Select your destination country\n3. Choose a roaming pack\n4. Confirm via OTP\n\n**Note:** Postpaid users get auto-activation. Prepaid users need min ₹500 balance.',
-    createdAt: '2024-02-20',
-    createdBy: 'Arjun Kapoor',
-    status: 'published',
-  },
-  {
-    id: 'KB003',
-    title: 'Understanding Your Postpaid Bill',
-    category: 'Billing',
-    content: '## Bill Components\n\n- **Plan charges**: Your monthly plan cost\n- **Usage charges**: Calls/data beyond plan limits\n- **Taxes**: GST @ 18%\n- **Add-ons**: Any additional packs purchased\n\nDownload detailed bill from app → Bills → Download PDF',
-    createdAt: '2024-03-01',
-    createdBy: 'Arjun Kapoor',
-    status: 'published',
-  },
-];
+export const kbArticles: KBArticle[] = [];
 
 export const ticketCategories = [
   'Billing',
