@@ -3,8 +3,9 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
   LayoutDashboard, Ticket, BookOpen, Send, CheckCircle, AlertTriangle,
-  Clock, Eye, Plus, SpellCheck, Wand2, FileText, RefreshCw
+  Clock, Eye, Plus, SpellCheck, Wand2, FileText, RefreshCw, ChevronDown
 } from 'lucide-react';
+import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '@/components/ui/collapsible';
 import Header from '@/components/Header';
 import TicketCard from '@/components/TicketCard';
 import { escalationsClient } from '@/integrations/supabase/escalationsClient';
