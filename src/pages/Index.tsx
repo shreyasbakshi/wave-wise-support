@@ -2,7 +2,7 @@ import { useState, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { Search } from 'lucide-react';
 import Header from '@/components/Header';
-import ChatBot, { ChatBotRef } from '@/components/ChatBot';
+import SpotlightSearch, { SpotlightRef } from '@/components/SpotlightSearch';
 
 const quickLinks = [
   'Check data balance',
@@ -15,13 +15,17 @@ const quickLinks = [
 
 export default function Index() {
   const [searchQuery, setSearchQuery] = useState('');
-  const chatBotRef = useRef<ChatBotRef>(null);
+  const spotlightRef = useRef<SpotlightRef>(null);
 
   const handleSearch = (query?: string) => {
     const q = (query || searchQuery).trim();
     if (!q) return;
-    chatBotRef.current?.openWithMessage(q);
+    spotlightRef.current?.openWithQuery(q);
     setSearchQuery('');
+  };
+
+  const openSpotlight = () => {
+    spotlightRef.current?.open();
   };
 
   return (
@@ -51,27 +55,26 @@ export default function Index() {
             </h1>
 
             <p className="text-muted-foreground text-base md:text-lg mb-10">
-              Search our knowledge base or chat with our AI assistant
+              Search our knowledge base or ask our AI assistant
             </p>
 
             {/* Search Box */}
             <div className="relative max-w-xl mx-auto">
-              <div className="flex rounded-full border border-border bg-card shadow-lg focus-within:border-primary/50 focus-within:shadow-xl transition-all">
-                <input
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-                  placeholder="eg: Where do I check my data usage?"
-                  className="flex-1 bg-transparent px-6 py-4 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none rounded-l-full"
-                />
-                <button
-                  onClick={() => handleSearch()}
-                  className="px-6 py-4 bg-primary text-primary-foreground hover:bg-primary/90 transition-colors rounded-r-full flex items-center gap-2 text-sm font-medium"
-                >
+              <div
+                className="flex rounded-full border border-border bg-card shadow-lg hover:border-primary/50 hover:shadow-xl transition-all cursor-text"
+                onClick={openSpotlight}
+              >
+                <div className="flex-1 px-6 py-4 text-sm text-muted-foreground">
+                  Search help articles or ask a question...
+                </div>
+                <div className="px-6 py-4 bg-primary text-primary-foreground rounded-r-full flex items-center gap-2 text-sm font-medium">
                   <Search className="w-4 h-4" />
                   Ask
-                </button>
+                </div>
               </div>
+              <kbd className="absolute right-[100px] top-1/2 -translate-y-1/2 hidden md:inline-flex items-center gap-0.5 px-2 py-1 text-[10px] font-mono text-muted-foreground bg-muted rounded border border-border">
+                ⌘K
+              </kbd>
             </div>
 
             {/* Quick Links */}
@@ -80,8 +83,7 @@ export default function Index() {
                 <button
                   key={link}
                   onClick={() => {
-                    setSearchQuery(link);
-                    handleSearch(link);
+                    spotlightRef.current?.openWithQuery(link);
                   }}
                   className="text-xs px-4 py-2 rounded-full border border-border bg-card text-muted-foreground hover:text-primary hover:border-primary/40 hover:shadow-sm transition-all"
                 >
@@ -93,7 +95,7 @@ export default function Index() {
         </div>
       </section>
 
-      <ChatBot ref={chatBotRef} />
+      <SpotlightSearch ref={spotlightRef} />
     </div>
   );
 }
