@@ -20,7 +20,6 @@ export type Database = {
           created_at: string
           customer_email: string | null
           customer_name: string | null
-          final_answer: string | null
           id: string
           merchant_answer: string | null
           query: string
@@ -33,7 +32,6 @@ export type Database = {
           created_at?: string
           customer_email?: string | null
           customer_name?: string | null
-          final_answer?: string | null
           id?: string
           merchant_answer?: string | null
           query: string
@@ -46,7 +44,6 @@ export type Database = {
           created_at?: string
           customer_email?: string | null
           customer_name?: string | null
-          final_answer?: string | null
           id?: string
           merchant_answer?: string | null
           query?: string
