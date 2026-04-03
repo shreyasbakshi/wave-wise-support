@@ -194,6 +194,7 @@ export default function CustomerPortal() {
       .from('escalations')
       .select('*')
       .eq('customer_email', user.email!)
+      .neq('status', 'deleted')
       .order('created_at', { ascending: false });
     if (data) setTickets(data as EscalationRow[]);
     setLoadingTickets(false);
