@@ -555,6 +555,7 @@ export default function MerchantPortal() {
     const { data, error } = await escalationsClient
       .from('escalations')
       .select('*')
+      .neq('status', 'deleted')
       .order('created_at', { ascending: false });
 
     if (data && !error) {
