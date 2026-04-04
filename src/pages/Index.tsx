@@ -97,6 +97,7 @@ export default function Index() {
       </section>
 
       <SpotlightSearch ref={spotlightRef} />
+      <ChatBot />
     </div>
   );
 }
