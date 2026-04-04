@@ -113,18 +113,40 @@ const SpotlightSearch = forwardRef<SpotlightRef>((_props, ref) => {
       try { parsed = JSON.parse(raw); } catch { parsed = { answer: raw }; }
 
       const answer = parsed.answer?.trim();
-      const shouldEscalate = Boolean(parsed.escalate) || !answer;
+      // Detect unhelpful/deflective answers as needing escalation
+      const unhelpfulPatterns = /(?:contact.+(?:support|customer service|provider)|I (?:recommend|suggest) (?:contacting|reaching out)|isn't a specific (?:FAQ|entry)|couldn't find|not (?:available|found)|unable to (?:find|help)|beyond my (?:scope|ability))/i;
+      const isUnhelpful = answer ? unhelpfulPatterns.test(answer) : true;
+      const shouldEscalate = Boolean(parsed.escalate) || !answer || isUnhelpful;
 
       if (shouldEscalate) {
         const needsLogin = !user;
-        setResult({
-          id: Date.now().toString(),
-          query: q,
-          answer: answer || "I couldn't find a matching answer in our knowledge base.",
-          source: 'webhook',
-          showLoginPrompt: needsLogin,
-          showCreateTicket: !needsLogin,
-        });
+
+        if (!needsLogin && user?.email) {
+          // Auto-create ticket for logged-in users
+          const { error } = await escalationsClient.from('escalations').insert({
+            session_id: SESSION_ID,
+            query: q,
+            customer_email: user.email,
+            status: 'pending',
+          });
+          setResult({
+            id: Date.now().toString(),
+            query: q,
+            answer: !error
+              ? "I couldn't find a direct answer for this.\n\n✅ A support ticket has been automatically created. You can track it under \"My Tickets\" in your dashboard."
+              : "I couldn't find a direct answer for this.\n\n❌ Failed to create a support ticket. Please try again.",
+            source: 'webhook',
+            ticketCreated: !error,
+          });
+        } else {
+          setResult({
+            id: Date.now().toString(),
+            query: q,
+            answer: "I couldn't find a direct answer for this. Please log in so we can create a support ticket for you.",
+            source: 'webhook',
+            showLoginPrompt: true,
+          });
+        }
       } else {
         setResult({
           id: Date.now().toString(),
