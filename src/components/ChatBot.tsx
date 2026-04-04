@@ -129,7 +129,9 @@ const ChatBot = forwardRef<ChatBotRef>((_props, ref) => {
 
       const data = parseCustomerQueryResponse(await response.text());
       const answer = data.answer?.trim();
-      const shouldEscalate = Boolean(data.escalate) || !answer;
+      const unhelpfulPatterns = /(?:contact.+(?:support|customer service|provider)|I (?:recommend|suggest) (?:contacting|reaching out)|isn't a specific (?:FAQ|entry)|couldn't find|not (?:available|found)|unable to (?:find|help)|beyond my (?:scope|ability))/i;
+      const isUnhelpful = answer ? unhelpfulPatterns.test(answer) : true;
+      const shouldEscalate = Boolean(data.escalate) || !answer || isUnhelpful;
 
       if (shouldEscalate) {
         // Check telco_support KB before escalating
@@ -152,33 +154,31 @@ const ChatBot = forwardRef<ChatBotRef>((_props, ref) => {
               feedbackGiven: null,
             },
           ]);
-        } else {
-        const needsLogin = !user;
-        const baseMessage = answer || 'I couldn\'t find a matching answer in our knowledge base.';
-
-        if (needsLogin) {
+        } else if (!user) {
           setMessages((prev) => [
             ...prev,
             {
               id: (Date.now() + 1).toString(),
               role: 'assistant',
-              content: `${baseMessage}\n\nPlease log in to create a support ticket.`,
+              content: "I couldn't find a direct answer for this. Please log in so we can create a support ticket for you.",
               showLoginPrompt: true,
               escalated: true,
             },
           ]);
         } else {
+          // Auto-create ticket for logged-in users
+          const ticketCreated = await createEscalation(text);
           setMessages((prev) => [
             ...prev,
             {
               id: (Date.now() + 1).toString(),
               role: 'assistant',
-              content: `${baseMessage}\n\nWould you like me to create a support ticket for this?`,
+              content: ticketCreated
+                ? "I couldn't find a direct answer for this.\n\n✅ A support ticket has been automatically created. You can track it under \"My Tickets\" in your dashboard."
+                : "I couldn't find a direct answer for this.\n\n❌ Failed to create a support ticket. Please try again.",
               escalated: true,
-              showCreateTicket: true,
             },
           ]);
-        }
         }
       } else {
         setMessages((prev) => [
