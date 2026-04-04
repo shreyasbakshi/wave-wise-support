@@ -100,12 +100,15 @@ const ChatBot = forwardRef<ChatBotRef>((_props, ref) => {
   const createEscalation = async (query: string) => {
     if (!user?.email) return false;
 
-    const { error } = await escalationsClient.from('escalations').insert({
-      session_id: SESSION_ID,
-      query,
-      customer_email: user.email,
-      status: 'pending',
-    });
+    const { error } = await escalationsClient.from('escalations').upsert(
+      {
+        session_id: SESSION_ID,
+        query,
+        customer_email: user.email,
+        status: 'pending',
+      },
+      { onConflict: 'session_id', ignoreDuplicates: false }
+    );
 
     return !error;
   };
