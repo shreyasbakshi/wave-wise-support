@@ -59,7 +59,7 @@ export default function CustomerLogin() {
                 <div className="w-2.5 h-2.5 rounded-full bg-neon-yellow" />
                 <div className="w-2.5 h-2.5 rounded-full bg-neon-green" />
               </div>
-              <span className="text-xs font-mono text-muted-foreground ml-2">customer_auth.exe</span>
+              <span className="text-xs font-mono text-muted-foreground ml-2">Customer Login</span>
             </div>
 
             <div className="flex items-center gap-2 mb-6">

@@ -2,6 +2,7 @@ import { useState, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { Search } from 'lucide-react';
 import Header from '@/components/Header';
+import ChatBot from '@/components/ChatBot';
 import SpotlightSearch, { SpotlightRef } from '@/components/SpotlightSearch';
 
 const quickLinks = [
@@ -96,6 +97,7 @@ export default function Index() {
       </section>
 
       <SpotlightSearch ref={spotlightRef} />
+      <ChatBot />
     </div>
   );
 }
