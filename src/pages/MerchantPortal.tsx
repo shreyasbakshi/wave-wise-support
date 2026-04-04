@@ -163,7 +163,7 @@ function TicketDetailMerchant({
       <div className="border border-border bg-card p-6">
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
-            <span className="text-[10px] font-mono text-muted-foreground">{ticket.id}</span>
+            <span className="text-[10px] font-mono text-muted-foreground">{ticket.id.slice(0, 8)}</span>
             <span className={`text-[10px] px-2 py-0.5 border font-mono uppercase ${
               ticket.status === 'open' ? 'border-neon-orange text-neon-orange' :
               ticket.status === 'pending' ? 'border-neon-yellow text-neon-yellow' :
